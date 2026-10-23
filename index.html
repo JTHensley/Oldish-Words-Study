@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Oldish Words Study</title>
+<style>
+  :root {
+    --bg: #f6f3ec; --card: #fffdf8; --ink: #2a2622; --muted: #6b6359;
+    --line: #d9d2c4; --hit: #2f7d4f; --build: #b4691f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1a17; --card: #26231f; --ink: #ece6da; --muted: #a39a8c;
+      --line: #3a362f; --hit: #5fb882; --build: #e0954a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.5 Georgia, "Times New Roman", serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 1.4rem; margin: 8px 0 12px; }
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+  .controls input[type=search] { grid-column: 1 / -1; }
+  input, select { width: 100%; padding: 10px; font: inherit; color: var(--ink);
+    background: var(--card); border: 1px solid var(--line); border-radius: 6px; }
+  .count { color: var(--muted); font-size: .9rem; margin: 8px 0; }
+  .card { background: var(--card); border: 1px solid var(--line);
+    border-left: 6px solid var(--hit); border-radius: 6px; padding: 12px 14px; margin-bottom: 12px; }
+  .card.build { border-left-color: var(--build); border-left-style: dashed; }
+  .term { font-size: 1.2rem; font-weight: bold; overflow-wrap: anywhere; }
+  .meta { color: var(--muted); font-size: .9rem; margin: 2px 0 8px; overflow-wrap: anywhere; }
+  .badge { display: inline-block; padding: 0 7px; border-radius: 10px; font-size: .75rem;
+    font-weight: bold; letter-spacing: .04em; color: #fff; background: var(--hit); }
+  .build .badge { background: var(--build); }
+  .field { margin: 4px 0; overflow-wrap: anywhere; }
+  .field b { font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .quote { font-style: italic; border-left: 3px solid var(--line); padding-left: 10px; margin: 6px 0; }
+  .msg { text-align: center; color: var(--muted); padding: 32px 8px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Oldish Words Study</h1>
+  <div class="controls">
+    <input type="search" id="q" placeholder="Search all columns…" aria-label="Search all columns">
+    <select id="era" aria-label="Filter by era"><option value="">All eras</option></select>
+    <select id="status" aria-label="Filter by status"><option value="">All statuses</option></select>
+  </div>
+  <div class="count" id="count" aria-live="polite"></div>
+  <div id="results"></div>
+</main>
+<script>
+(function () {
+  var rows = [];
+  var $q = document.getElementById("q"), $era = document.getElementById("era"),
+      $status = document.getElementById("status"), $res = document.getElementById("results"),
+      $count = document.getElementById("count");
+
+  // Minimal RFC 4180 CSV parser (quoted fields, doubled quotes, embedded commas/newlines).
+  function parseCSV(text) {
+    var out = [], row = [], f = "", inQ = false, i, c;
+    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+    for (i = 0; i < text.length; i++) {
+      c = text[i];
+      if (inQ) {
+        if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else inQ = false; }
+        else f += c;
+      } else if (c === '"') inQ = true;
+      else if (c === ",") { row.push(f); f = ""; }
+      else if (c === "\n" || c === "\r") {
+        if (c === "\r" && text[i + 1] === "\n") i++;
+        row.push(f); f = ""; out.push(row); row = [];
+      } else f += c;
+    }
+    if (f !== "" || row.length) { row.push(f); out.push(row); }
+    return out.filter(function (r) { return r.length > 1 || r[0] !== ""; });
+  }
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function field(label, value, cls) {
+    if (!value) return null;
+    var d = el("div", "field" + (cls ? " " + cls : ""));
+    if (label) { d.appendChild(el("b", "", label + " ")); }
+    d.appendChild(document.createTextNode(value));
+    return d;
+  }
+
+  function card(r) {
+    var c = el("article", "card " + (r.status === "BUILD" ? "build" : "hit"));
+    c.appendChild(el("div", "term", r.term));
+    var meta = el("div", "meta");
+    meta.appendChild(document.createTextNode([r.era, r.date].filter(Boolean).join(" · ") + (r.era || r.date ? " · " : "")));
+    meta.appendChild(el("span", "badge", r.status));
+    c.appendChild(meta);
+    [field("Job", r.job), field("Definition", r.definition), field("Usage notes", r.usage_notes),
+     field("", r.quote ? "“" + r.quote + "”" : "", "quote"),
+     field("Source", r.source), field("Locator", r.locator)].forEach(function (n) { if (n) c.appendChild(n); });
+    return c;
+  }
+
+  function fillSelect(sel, key) {
+    var seen = {};
+    rows.forEach(function (r) { if (r[key]) seen[r[key]] = 1; });
+    Object.keys(seen).sort().forEach(function (v) {
+      var o = el("option", "", v); o.value = v; sel.appendChild(o);
+    });
+  }
+
+  function render() {
+    var q = $q.value.trim().toLowerCase(), era = $era.value, st = $status.value;
+    var hits = rows.filter(function (r) {
+      if (era && r.era !== era) return false;
+      if (st && r.status !== st) return false;
+      return !q || Object.keys(r).some(function (k) { return r[k].toLowerCase().indexOf(q) !== -1; });
+    });
+    $res.textContent = "";
+    $count.textContent = rows.length ? hits.length + " of " + rows.length + " entries" : "";
+    if (!hits.length) {
+      $res.appendChild(el("div", "msg", rows.length
+        ? "No matching entries. Try a different search or clear the filters."
+        : "No entries yet."));
+      return;
+    }
+    hits.forEach(function (r) { $res.appendChild(card(r)); });
+  }
+
+  fetch("entries.csv").then(function (resp) {
+    if (!resp.ok) throw new Error(resp.status);
+    return resp.text();
+  }).then(function (text) {
+    var t = parseCSV(text), head = t.shift() || [];
+    rows = t.map(function (cells) {
+      var o = {};
+      head.forEach(function (h, i) { o[h.trim()] = cells[i] || ""; });
+      return o;
+    });
+    fillSelect($era, "era"); fillSelect($status, "status");
+    render();
+  }).catch(function () {
+    $res.appendChild(el("div", "msg",
+      "Could not load entries.csv. If you opened this file directly from disk, serve the folder with a local web server instead."));
+  });
+
+  $q.addEventListener("input", render);
+  $era.addEventListener("change", render);
+  $status.addEventListener("change", render);
+})();
+</script>
+</body>
+</html>
