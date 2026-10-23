@@ -23,8 +23,10 @@ A small research database of historically attested English words and phrases (Ol
 | `quote` | The attested passage, copied exactly. |
 | `source` | The named work or dictionary the quote comes from. |
 | `locator` | Where in the source: record number, entry, chapter, page or similar. |
-| `found_by` | Who located the entry. |
-| `checked_by` | Who verified it against the source. Empty until someone has. |
+| `found_by` | Who first added the entry. Never overwritten. |
+| `last_verified_by` | Name of the most recent person who verified the entry against its source (for example Claude, Grok, ChatGPT or the user). Empty until someone has. |
+| `last_verified_date` | Date of that verification, `YYYY-MM-DD`. Empty until verified. |
+| `change_note` | Short note on what a verifier corrected. Empty if nothing was changed. |
 | `date_added` | Date the row was added, `YYYY-MM-DD`. |
 
 Empty fields stay empty. Do not guess a definition, spelling or date.
@@ -35,6 +37,13 @@ Empty fields stay empty. Do not guess a definition, spelling or date.
 - **BUILD**: the term was assembled and is not attested as a whole.
 
 Never mix the two: a BUILD row is never presented as attested, and a HIT row is never assembled from parts.
+
+## Verification
+
+- `found_by` keeps the name of whoever first added the entry. Never overwrite it.
+- When someone verifies an entry, they must open the cited source and compare the quote against it. Only then may they set `last_verified_by` (their name, for example Claude, Grok, ChatGPT or the user) and `last_verified_date` (`YYYY-MM-DD`).
+- If the entry is wrong, the verifier corrects the row, updates `last_verified_by` and `last_verified_date`, and writes a short `change_note` saying what was fixed. The earlier version stays in the Git history.
+- If the source cannot be opened, do not set `last_verified_by`. Leave the fields as they were.
 
 ## Rules for the data
 
@@ -47,5 +56,5 @@ Never mix the two: a BUILD row is never presented as attested, and a HIT row is 
 2. Give it the next unused `id`.
 3. Set `status` to `HIT` or `BUILD`. For `HIT`, fill `quote`, `source` and `locator`.
 4. Wrap any field containing a comma, a line break or a double quote in double quotes, and double any quote inside it (`"` becomes `""`).
-5. Set `found_by` and `date_added`. Leave `checked_by` empty until the entry has been verified.
+5. Set `found_by` and `date_added`. Leave `last_verified_by`, `last_verified_date` and `change_note` empty until the entry has been verified (see Verification).
 6. Reload `index.html` and confirm the new card appears.
