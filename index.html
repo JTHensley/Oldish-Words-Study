@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex">
+<meta name="robots" content="noindex, nofollow">
 <title>Oldish Words Study</title>
 <style>
   :root {
@@ -40,12 +40,32 @@
   .foot { margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--line);
     text-align: right; font-size: .75rem; color: var(--muted); overflow-wrap: anywhere; }
   .foot div + div { margin-top: 2px; }
+  .switch { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-bottom: 12px;
+    border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .switch button { padding: 10px 6px; font: inherit; color: var(--ink); background: var(--card);
+    border: 0; cursor: pointer; overflow-wrap: anywhere; }
+  .switch button + button { border-left: 1px solid var(--line); }
+  .switch button[aria-pressed=true] { background: var(--ink); color: var(--bg); font-weight: bold; }
+  .controls.three { grid-template-columns: 1fr 1fr 1fr; }
+  @media (max-width: 520px) { .controls.three { grid-template-columns: 1fr 1fr; }
+    .controls.three select:last-child { grid-column: 1 / -1; } }
+  .group { margin-bottom: 18px; }
+  .group h2 { font-size: 1.1rem; margin: 0 0 8px; overflow-wrap: anywhere; }
+  .opt { background: var(--card); border: 1px solid var(--line); border-left: 6px solid var(--muted);
+    border-radius: 6px; padding: 10px 14px; margin-bottom: 8px; }
+  .opt .term { font-size: 1.1rem; }
+  .opt .note { color: var(--muted); font-size: .9rem; }
   .msg { text-align: center; color: var(--muted); padding: 32px 8px; }
 </style>
 </head>
 <body>
 <main>
   <h1>Oldish Words Study</h1>
+  <div class="switch" role="group" aria-label="View">
+    <button type="button" id="btn-ev" aria-pressed="true">Evidence</button>
+    <button type="button" id="btn-rg" aria-pressed="false">Wōdlund register</button>
+  </div>
+  <section id="view-ev">
   <div class="controls">
     <input type="search" id="q" placeholder="Search all columns…" aria-label="Search all columns">
     <select id="era" aria-label="Filter by era"><option value="">All eras</option></select>
@@ -53,6 +73,17 @@
   </div>
   <div class="count" id="count" aria-live="polite"></div>
   <div id="results"></div>
+  </section>
+  <section id="view-rg" hidden>
+    <div class="controls three">
+      <input type="search" id="rq" placeholder="Search concept, option, notes…" aria-label="Search concept, option and notes" style="grid-column: 1 / -1">
+      <select id="rtier" aria-label="Filter by tier"><option value="__all">All tiers</option><option value="__blank">Undecided (blank)</option></select>
+      <select id="rstatus" aria-label="Filter by status"><option value="__all">All statuses</option><option value="__unset">Unset</option></select>
+      <select id="rtype" aria-label="Filter by type"><option value="__all">All types</option></select>
+    </div>
+    <div class="count" id="rcount" aria-live="polite"></div>
+    <div id="rresults"></div>
+  </section>
 </main>
 <script>
 (function () {
@@ -155,10 +186,114 @@
     });
     fillSelect($era, "era"); fillSelect($status, "status");
     render();
+    if (reg.length) renderReg();
   }).catch(function () {
     $res.appendChild(el("div", "msg",
       "Could not load entries.csv. If you opened this file directly from disk, serve the folder with a local web server instead."));
   });
+
+  // ---- Wōdlund register view ----
+  var reg = [], regLoaded = false;
+  var $rq = document.getElementById("rq"), $rtier = document.getElementById("rtier"),
+      $rstatus = document.getElementById("rstatus"), $rtype = document.getElementById("rtype"),
+      $rres = document.getElementById("rresults"), $rcount = document.getElementById("rcount");
+
+  function fillRegSelect(sel, key) {
+    var seen = {};
+    reg.forEach(function (r) { if (r[key]) seen[r[key]] = 1; });
+    Object.keys(seen).sort(function (a, b) { return a.localeCompare(b, undefined, { numeric: true }); })
+      .forEach(function (v) { var o = el("option", "", v); o.value = v; sel.appendChild(o); });
+  }
+
+  function evidenceFor(id) {
+    id = id.trim();
+    for (var i = 0; i < rows.length; i++) if (rows[i].id.trim() === id) return rows[i];
+    return null;
+  }
+
+  function optionBlock(r) {
+    var c = el("article", "opt");
+    c.appendChild(el("div", "term", r.option));
+    var meta = [r.type, r.tier ? "Tier: " + r.tier : "Tier: undecided"];
+    if (r.status) meta.push("Status: " + r.status);
+    if (r.chapter) meta.push("Chapter: " + r.chapter);
+    c.appendChild(el("div", "meta", meta.join(" · ")));
+    if (!r.entry_id.trim()) c.appendChild(el("div", "field note", "No evidence row yet"));
+    else {
+      var e = evidenceFor(r.entry_id);
+      if (!e) c.appendChild(el("div", "field note", "Evidence row not found"));
+      else [field("", e.quote ? "“" + e.quote + "”" : "", "quote"),
+            field("Source", e.source), field("Locator", e.locator)]
+        .forEach(function (n) { if (n) c.appendChild(n); });
+    }
+    var n = field("Notes", r.notes); if (n) c.appendChild(n);
+    var d = [r.decided_by && "Decided by " + r.decided_by, r.decided_date].filter(Boolean).join(", ");
+    if (d) c.appendChild(el("div", "foot", d));
+    return c;
+  }
+
+  function renderReg() {
+    var q = norm($rq.value.trim()), tier = $rtier.value, st = $rstatus.value, ty = $rtype.value;
+    $rres.textContent = "";
+    if (!reg.length) { $rcount.textContent = ""; $rres.appendChild(el("div", "msg", "No register entries yet.")); return; }
+    var hits = reg.filter(function (r) {
+      if (tier === "__blank" ? r.tier : (tier !== "__all" && r.tier !== tier)) return false;
+      if (st === "__unset" ? r.status : (st !== "__all" && r.status !== st)) return false;
+      if (ty !== "__all" && r.type !== ty) return false;
+      return !q || [r.concept, r.option, r.notes].some(function (v) { return norm(v).indexOf(q) !== -1; });
+    });
+    var order = [], groups = {};
+    hits.forEach(function (r) {
+      var k = r.concept || "(no concept given)";
+      if (!Object.prototype.hasOwnProperty.call(groups, k)) { groups[k] = []; order.push(k); }
+      groups[k].push(r);
+    });
+    $rcount.textContent = hits.length + " of " + reg.length + " options in " + order.length + " concepts";
+    if (!hits.length) { $rres.appendChild(el("div", "msg", "No matching register entries. Try a different search or clear the filters.")); return; }
+    order.forEach(function (k) {
+      var g = el("section", "group"); g.appendChild(el("h2", "", k));
+      groups[k].forEach(function (r) { g.appendChild(optionBlock(r)); });
+      $rres.appendChild(g);
+    });
+  }
+
+  function loadReg() {
+    if (regLoaded) return; regLoaded = true;
+    fetch("register.csv").then(function (resp) {
+      if (!resp.ok) throw new Error(resp.status);
+      return resp.text();
+    }).then(function (text) {
+      var t = parseCSV(text), head = t.shift() || [];
+      reg = t.map(function (cells) {
+        var o = {};
+        head.forEach(function (h, i) { o[h.trim()] = cells[i] || ""; });
+        ["reg_id","concept","option","type","entry_id","tier","status","chapter","decided_by","decided_date","notes"]
+          .forEach(function (k) { if (o[k] === undefined) o[k] = ""; });
+        return o;
+      });
+      fillRegSelect($rtier, "tier"); fillRegSelect($rstatus, "status"); fillRegSelect($rtype, "type");
+      renderReg();
+    }).catch(function () {
+      regLoaded = false;
+      $rres.textContent = "";
+      $rres.appendChild(el("div", "msg", "Could not load register.csv. If you opened this file directly from disk, serve the folder with a local web server instead."));
+    });
+  }
+
+  var views = { ev: document.getElementById("view-ev"), rg: document.getElementById("view-rg") },
+      btns = { ev: document.getElementById("btn-ev"), rg: document.getElementById("btn-rg") };
+  function show(which) {
+    Object.keys(views).forEach(function (k) {
+      views[k].hidden = k !== which; btns[k].setAttribute("aria-pressed", k === which ? "true" : "false");
+    });
+    if (which === "rg") { loadReg(); if (regLoaded && reg.length) renderReg(); }
+  }
+  btns.ev.addEventListener("click", function () { show("ev"); });
+  btns.rg.addEventListener("click", function () { show("rg"); });
+  $rq.addEventListener("input", renderReg);
+  $rtier.addEventListener("change", renderReg);
+  $rstatus.addEventListener("change", renderReg);
+  $rtype.addEventListener("change", renderReg);
 
   $q.addEventListener("input", render);
   $era.addEventListener("change", render);
