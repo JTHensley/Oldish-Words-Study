@@ -37,6 +37,9 @@
   .field { margin: 4px 0; overflow-wrap: anywhere; }
   .field b { font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
   .quote { font-style: italic; border-left: 3px solid var(--line); padding-left: 10px; margin: 6px 0; }
+  .foot { margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--line);
+    text-align: right; font-size: .75rem; color: var(--muted); overflow-wrap: anywhere; }
+  .foot div + div { margin-top: 2px; }
   .msg { text-align: center; color: var(--muted); padding: 32px 8px; }
 </style>
 </head>
@@ -102,8 +105,17 @@
     [field("Job", r.job), field("Definition", r.definition), field("Usage notes", r.usage_notes),
      field("", r.quote ? "“" + r.quote + "”" : "", "quote"),
      field("Source", r.source), field("Locator", r.locator)].forEach(function (n) { if (n) c.appendChild(n); });
+    var foot = el("footer", "foot");
+    foot.appendChild(el("div", "", r.last_verified_by
+      ? "Last verified by " + r.last_verified_by + (r.last_verified_date ? ", " + r.last_verified_date : "")
+      : "Not yet verified"));
+    if (r.change_note) foot.appendChild(el("div", "", "Change note: " + r.change_note));
+    c.appendChild(foot);
     return c;
   }
+
+  // Compare in Unicode NFC so a typed accent matches the stored one however it is encoded.
+  function norm(x) { return x.normalize("NFC").toLowerCase(); }
 
   function fillSelect(sel, key) {
     var seen = {};
@@ -114,11 +126,11 @@
   }
 
   function render() {
-    var q = $q.value.trim().toLowerCase(), era = $era.value, st = $status.value;
+    var q = norm($q.value.trim()), era = $era.value, st = $status.value;
     var hits = rows.filter(function (r) {
       if (era && r.era !== era) return false;
       if (st && r.status !== st) return false;
-      return !q || Object.keys(r).some(function (k) { return r[k].toLowerCase().indexOf(q) !== -1; });
+      return !q || Object.keys(r).some(function (k) { return norm(r[k]).indexOf(q) !== -1; });
     });
     $res.textContent = "";
     $count.textContent = rows.length ? hits.length + " of " + rows.length + " entries" : "";
