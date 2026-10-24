@@ -1,2 +1,0 @@
-ChatGPT capability test, 2026-10-24.
-Temporary test file on an isolated branch. No research data changed.
