@@ -35,6 +35,7 @@
     font-weight: bold; letter-spacing: .04em; color: #fff; background: var(--hit); }
   .build .badge { background: var(--build); }
   .field { margin: 4px 0; overflow-wrap: anywhere; }
+  .field a { color: inherit; text-decoration: underline; overflow-wrap: anywhere; }
   .field b { font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
   .quote { font-style: italic; border-left: 3px solid var(--line); padding-left: 10px; margin: 6px 0; }
   .foot { margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--line);
@@ -126,6 +127,23 @@
     return d;
   }
 
+  // source_url: a link only if it is a web address; otherwise plain text. Built with DOM methods.
+  function linkField(label, url) {
+    if (!url) return null;
+    var d = el("div", "field");
+    d.appendChild(el("b", "", label + " "));
+    if (/^https?:\/\//.test(url)) {
+      var a = document.createElement("a");
+      a.href = url;
+      a.rel = "noopener noreferrer";
+      a.textContent = url;
+      d.appendChild(a);
+    } else {
+      d.appendChild(document.createTextNode(url));
+    }
+    return d;
+  }
+
   function card(r) {
     var c = el("article", "card " + (r.status === "BUILD" ? "build" : "hit"));
     c.appendChild(el("div", "term", r.term));
@@ -135,7 +153,8 @@
     c.appendChild(meta);
     [field("Job", r.job), field("Definition", r.definition), field("Usage notes", r.usage_notes),
      field("", r.quote ? "“" + r.quote + "”" : "", "quote"),
-     field("Source", r.source), field("Locator", r.locator)].forEach(function (n) { if (n) c.appendChild(n); });
+     field("Source", r.source), field("Locator", r.locator),
+     linkField("Source address", r.source_url)].forEach(function (n) { if (n) c.appendChild(n); });
     var foot = el("footer", "foot");
     foot.appendChild(el("div", "", r.last_verified_by
       ? "Last verified by " + r.last_verified_by + (r.last_verified_date ? ", " + r.last_verified_date : "")
