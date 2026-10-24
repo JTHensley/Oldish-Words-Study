@@ -26,6 +26,7 @@ import csv
 import datetime
 import html as htmllib
 import io
+import json
 import os
 import re
 import subprocess
@@ -299,8 +300,31 @@ def norm_ws(s):
     return " ".join(unicodedata.normalize("NFC", s).split())
 
 
+def json_strings(value):
+    """Every string value in a parsed JSON document, at any depth, in document order."""
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for v in value.values():
+            yield from json_strings(v)
+    elif isinstance(value, list):
+        for v in value:
+            yield from json_strings(v)
+
+
+def page_source(body):
+    """If the body is JSON, the string values joined by single spaces (this decodes \\n, \\" and
+    \\uXXXX escapes); otherwise the body itself, treated as HTML."""
+    try:
+        parsed = json.loads(body)
+    except ValueError:
+        return body
+    return " ".join(json_strings(parsed))
+
+
 def page_texts(page_html):
     """Plain-text versions of a page: tags -> a space, and tags -> nothing (for inline markup)."""
+    page_html = page_source(page_html)
     s = re.sub(r"(?is)<(script|style)\b.*?</\1\s*>", " ", page_html)
     s = re.sub(r"(?s)<!--.*?-->", " ", s)
     return [norm_ws(htmllib.unescape(re.sub(r"(?s)<[^>]*>", repl, s))) for repl in (" ", "")]
@@ -309,6 +333,11 @@ def page_texts(page_html):
 def quote_pieces(quote):
     """Split on '...' or the ellipsis character; each non-empty piece must appear on the page."""
     return [p for p in (norm_ws(x) for x in re.split(r"\.\.\.|…", quote)) if p]
+
+
+def page_text_length(page_html):
+    """Number of characters of page text that match_quote searches (tags replaced by spaces)."""
+    return len(page_texts(page_html)[0])
 
 
 def match_quote(quote, page_html):
@@ -379,7 +408,8 @@ def check_source_urls(rows, base_old):
             notes.append(f"{name} {who}: quote found on {url}")
         else:
             shown = "; ".join("'" + (m if len(m) <= 80 else m[:77] + "...") + "'" for m in missing)
-            err(f"{name} {who}: quote not found on {url} (missing: {shown})")
+            err(f"{name} {who}: quote not found on {url} (missing: {shown}; "
+                f"{page_text_length(page)} characters of page text were searched)")
     if unrecorded:
         notes.append(f"{name}: existing HIT rows with a blank source_url: " + ", ".join(unrecorded))
 
