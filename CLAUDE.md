@@ -10,6 +10,7 @@ This repository holds two data layers: `entries.csv` (evidence) and `register.cs
 ## Check your work before every push
 Do this every time, and do not push until every item passes. If a check fails, fix it and run all the checks again.
 
+0. **Run the script.** Run `git fetch origin` and then `python3 check.py`. It must print `OK` with no errors. Read every warning and note it prints, and deal with each one. The script covers the mechanical parts of items 3, 4 and 6 below, but it does not replace items 1, 2 and 5.
 1. **Diff review.** Run `git diff` and read all of it. Confirm that only the intended files and rows changed, and that nothing else moved.
 2. **Copy check.** Compare every quote, source, locator, date and spelling you entered against the text the user gave, character by character, including accents and macrons. Report any difference.
 3. **CSV validity.** Parse each changed CSV with a CSV parser. Confirm that the header row is exactly as the README defines it, that every row has the same number of fields as the header, that the file is UTF-8, and that `id` / `reg_id` values are unique.
