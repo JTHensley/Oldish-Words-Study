@@ -2,30 +2,48 @@
 """Mechanical checks for entries.csv and register.csv.
 
 Usage:
-    python3 check.py                 # check the files next to this script
+    python3 check.py --allow-file NAME [--allow-file NAME ...] [--allow-remove FILE:KEY ...]
     python3 check.py --dir PATH      # check the files in PATH
-    python3 check.py --base REF      # also compare against REF (default origin/main)
-    python3 check.py --no-base       # skip the comparison
+    python3 check.py --base REF      # compare against REF (default origin/main)
+    python3 check.py --no-base       # debugging only: the run is then NOT a valid pre-merge run
+
+The comparison with the base is required. If it cannot be done, that is an ERROR.
+--allow-file NAME     (repeatable) a file this task may change. Any other changed file is an ERROR;
+                      with no --allow-file, no changed file is allowed.
+--allow-remove F:KEY  (repeatable) a row that this task may delete, e.g. entries.csv:3. Any other
+                      removed row is an ERROR.
 
 Exit status is 0 only if there are no errors. Warnings and notes do not fail the run.
 Standard library only. Anyone (any assistant or person) can run it.
 
-It checks structure and rules that a program can decide. It cannot check that a quote is
-faithful to its source or that a tier was really the author's decision; those need a person or a
-second reader.
+It checks structure and rules that a program can decide, and, for new or changed HIT quotes whose
+source_url is on a fetchable site, that the quote appears on the page. It cannot check that a quote
+is faithful to a source it cannot fetch, or that a tier was really the author's decision; those need
+a person or a second reader.
 """
 import argparse
 import csv
 import datetime
+import html as htmllib
 import io
 import os
 import re
 import subprocess
 import sys
+import unicodedata
+import urllib.parse
+import urllib.request
+
+# Sites whose pages this script will fetch to check a quote against. Edit this list to add more.
+FETCHABLE_HOSTS = [
+    "artflsrv04.uchicago.edu",
+    "bosworthtoller.com",
+]
+FETCH_TIMEOUT_SECONDS = 20
 
 ENTRIES_HEADER = ("id,term,modern_spelling,historical_spelling,era,date,status,job,definition,"
                   "usage_notes,quote,source,locator,found_by,last_verified_by,"
-                  "last_verified_date,change_note,date_added").split(",")
+                  "last_verified_date,change_note,date_added,source_url").split(",")
 REGISTER_HEADER = ("reg_id,concept,option,type,entry_id,tier,status,chapter,decided_by,"
                    "decided_date,notes,date_added").split(",")
 
@@ -33,7 +51,10 @@ ERA_RE = re.compile(r"^L?(OE|ME|EME|ModE)$")
 STATUSES = {"HIT", "BUILD"}
 TYPES = {"word", "phrase", "construction"}
 
+USER_NAME = "User"
+
 errors, warnings, notes = [], [], []
+missing_dates = []  # ids of rows verified by someone other than "User" with no date
 
 
 def err(msg):
@@ -124,8 +145,10 @@ def check_entries(header, rows):
         if not parse_date(r["date_added"]):
             err(f"{name} {who}: date_added '{r['date_added']}' is not a valid YYYY-MM-DD date")
         check_dates(name, who, r, ["last_verified_date"])
-        if r["last_verified_by"] and not r["last_verified_date"]:
-            err(f"{name} {who}: last_verified_by is set but last_verified_date is empty")
+        if r["last_verified_by"] and r["last_verified_by"] != USER_NAME and not r["last_verified_date"]:
+            err(f"{name} {who}: last_verified_by is '{r['last_verified_by']}' but last_verified_date "
+                f"is empty (a date is required unless last_verified_by is exactly '{USER_NAME}')")
+            missing_dates.append(f"{name} id {r['id']}")
         if r["last_verified_date"] and not r["last_verified_by"]:
             err(f"{name} {who}: last_verified_date is set but last_verified_by is empty")
         if r["change_note"] and not r["last_verified_by"]:
@@ -181,19 +204,29 @@ def git_show(directory, ref, fname):
         return None
 
 
-def compare(directory, ref, fname, key, new_rows, protected, review):
-    """Report rows added / removed / changed relative to ref. Returns False if base unavailable."""
+def compare(directory, ref, fname, key, new_rows, protected, review, allow_remove):
+    """Report rows added / removed / changed relative to ref.
+
+    Returns the base rows as {key: row dict}, or None if the comparison could not be done
+    (which is recorded as an ERROR).
+    """
     base_bytes = git_show(directory, ref, fname)
     if base_bytes is None:
-        return False
+        err(f"{fname}: cannot compare with {ref}: could not read {fname} at {ref} "
+            f"(no git, no {ref}, or the file is missing there; try: git fetch origin)")
+        return None
     try:
         base_raw = list(csv.reader(io.StringIO(base_bytes.decode("utf-8"), newline="")))
-    except (UnicodeDecodeError, csv.Error):
-        notes.append(f"{fname}: could not read the {ref} version for comparison")
-        return True
+    except (UnicodeDecodeError, csv.Error) as e:
+        err(f"{fname}: cannot compare with {ref}: the {ref} version is unreadable ({e})")
+        return None
     if not base_raw:
-        return True
+        err(f"{fname}: cannot compare with {ref}: the {ref} version is empty")
+        return None
     bh = base_raw[0]
+    if key not in bh:
+        err(f"{fname}: cannot compare with {ref}: the {ref} version has no '{key}' column")
+        return None
     old = {}
     for cells in base_raw[1:]:
         if len(cells) == len(bh):
@@ -213,7 +246,13 @@ def compare(directory, ref, fname, key, new_rows, protected, review):
         lines.append(f"added {key}: " + ", ".join(added))
     if removed:
         lines.append(f"REMOVED {key}: " + ", ".join(removed))
-        warnings.append(f"{fname}: rows removed compared with {ref}: " + ", ".join(removed))
+        for k in removed:
+            if (fname, k) in allow_remove:
+                allow_remove_used.add((fname, k))
+                notes.append(f"{fname} {key} {k}: row removed, allowed by --allow-remove {fname}:{k}")
+            else:
+                err(f"{fname} {key} {k}: row exists in {ref} but was removed "
+                    f"(if the task names this deletion, use --allow-remove {fname}:{k})")
     for k, diffs in changed:
         lines.append(f"changed {key} {k}: " + ", ".join(diffs))
         for c in diffs:
@@ -225,15 +264,145 @@ def compare(directory, ref, fname, key, new_rows, protected, review):
                                 f"('{old[k][c]}' -> '{new[k][c]}'); confirm this was intended "
                                 f"(a correction needs a change_note)")
     notes.append(f"{fname} compared with {ref}: " + ("; ".join(lines) if lines else "no row changes"))
-    return True
+    return old
+
+
+allow_remove_used = set()
+
+
+def check_changed_files(directory, ref, allow_files):
+    """Every file that differs from the merge-base with ref must be named with --allow-file."""
+    def git(*args):
+        return subprocess.run(["git", "-C", directory, *args], capture_output=True,
+                              check=True).stdout.decode("utf-8", "replace")
+    try:
+        mb = git("merge-base", ref, "HEAD").strip()
+        changed = set(x for x in git("diff", "--name-only", "--relative", "-z", mb).split("\0") if x)
+        changed |= set(x for x in git("ls-files", "--others", "--exclude-standard", "-z").split("\0") if x)
+    except (OSError, subprocess.CalledProcessError) as e:
+        detail = getattr(e, "stderr", b"")
+        detail = detail.decode("utf-8", "replace").strip() if detail else str(e)
+        err(f"could not list the files changed compared with {ref}: {detail}")
+        return
+    changed = sorted(changed)
+    notes.append(f"files changed compared with {ref}: " + (", ".join(changed) if changed else "(none)"))
+    for f in changed:
+        if f not in allow_files:
+            err(f"changed file '{f}' is not allowed (use --allow-file {f} only if the task says "
+                f"this file may change)")
+
+
+# ---- quote fetch-and-match -------------------------------------------------------------------
+
+def norm_ws(s):
+    """NFC-normalise and collapse all whitespace to single spaces."""
+    return " ".join(unicodedata.normalize("NFC", s).split())
+
+
+def page_texts(page_html):
+    """Plain-text versions of a page: tags -> a space, and tags -> nothing (for inline markup)."""
+    s = re.sub(r"(?is)<(script|style)\b.*?</\1\s*>", " ", page_html)
+    s = re.sub(r"(?s)<!--.*?-->", " ", s)
+    return [norm_ws(htmllib.unescape(re.sub(r"(?s)<[^>]*>", repl, s))) for repl in (" ", "")]
+
+
+def quote_pieces(quote):
+    """Split on '...' or the ellipsis character; each non-empty piece must appear on the page."""
+    return [p for p in (norm_ws(x) for x in re.split(r"\.\.\.|…", quote)) if p]
+
+
+def match_quote(quote, page_html):
+    """Return (True, []) if the quote appears in the page text, else (False, [missing pieces])."""
+    pieces = quote_pieces(quote)
+    if not pieces:
+        return False, ["(the quote has no text to match)"]
+    best = None
+    for text in page_texts(page_html):
+        missing = [p for p in pieces if p not in text]
+        if not missing:
+            return True, []
+        if best is None or len(missing) < len(best):
+            best = missing
+    return False, best
+
+
+def fetch_page(url):
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Oldish-Words-Study check.py)"})
+    with urllib.request.urlopen(req, timeout=FETCH_TIMEOUT_SECONDS) as resp:
+        data = resp.read()
+    return data.decode("utf-8")
+
+
+def is_web_address(u):
+    return u.startswith("http://") or u.startswith("https://")
+
+
+def check_source_urls(rows, base_old):
+    """source_url rules for entries.csv; fetches and matches quotes where it can."""
+    name = "entries.csv"
+    if base_old is None:
+        return  # the comparison failed; that is already an ERROR
+    unrecorded = []
+    for line, r in rows:
+        if r["status"] != "HIT":
+            continue
+        who = f"id {r['id']} (record {line})"
+        url = r["source_url"]
+        old = base_old.get(r["id"])
+        is_new = old is None or old.get("quote") != r["quote"]
+        needs = is_new and r["found_by"] != USER_NAME
+        if not needs:
+            if not is_new and not url:
+                unrecorded.append(r["id"])
+            elif url and not is_web_address(url):
+                warnings.append(f"{name} {who}: source_url '{url}' does not start with http:// or https://")
+            continue
+        if not url:
+            err(f"{name} {who}: new or changed HIT quote needs source_url (the exact address opened "
+                f"to find the quote)")
+            continue
+        if not is_web_address(url):
+            err(f"{name} {who}: source_url '{url}' must start with http:// or https://")
+            continue
+        host = (urllib.parse.urlsplit(url).hostname or "").lower()
+        if host not in FETCHABLE_HOSTS:
+            notes.append(f"{name} {who}: host {host} is not machine-checkable, needs a person to compare "
+                         f"the quote with {url}")
+            continue
+        try:
+            page = fetch_page(url)
+        except Exception as e:  # network, timeout, HTTP error, bad encoding
+            err(f"{name} {who}: quote could not be checked: fetching {url} failed ({type(e).__name__}: {e})")
+            continue
+        ok, missing = match_quote(r["quote"], page)
+        if ok:
+            notes.append(f"{name} {who}: quote found on {url}")
+        else:
+            shown = "; ".join("'" + (m if len(m) <= 80 else m[:77] + "...") + "'" for m in missing)
+            err(f"{name} {who}: quote not found on {url} (missing: {shown})")
+    if unrecorded:
+        notes.append(f"{name}: existing HIT rows with a blank source_url: " + ", ".join(unrecorded))
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dir", default=os.path.dirname(os.path.abspath(__file__)))
     ap.add_argument("--base", default="origin/main")
-    ap.add_argument("--no-base", action="store_true")
+    ap.add_argument("--no-base", action="store_true",
+                    help="debugging only; adds an ERROR because the run is not a valid pre-merge run")
+    ap.add_argument("--allow-file", action="append", default=[], metavar="NAME",
+                    help="a file the task may change (repeatable)")
+    ap.add_argument("--allow-remove", action="append", default=[], metavar="FILE:KEY",
+                    help="a row the task may delete, e.g. entries.csv:3 (repeatable)")
     a = ap.parse_args()
+
+    allow_remove = set()
+    for spec in a.allow_remove:
+        fname, sep, key = spec.rpartition(":")
+        if not sep or not fname or not key:
+            err(f"--allow-remove '{spec}' must look like FILE:KEY, for example entries.csv:3")
+        else:
+            allow_remove.add((fname, key))
 
     ebytes = read_file(os.path.join(a.dir, "entries.csv"))
     rbytes = read_file(os.path.join(a.dir, "register.csv"))
@@ -243,20 +412,35 @@ def main():
     if r:
         check_register(r[0], r[1], entry_ids)
 
-    if not a.no_base:
-        done = []
+    base_entries = None
+    if a.no_base:
+        err("--no-base was used: no comparison with the base was made, so this run is not a valid "
+            "pre-merge run")
+    else:
         if e and e[0] == ENTRIES_HEADER:
-            done.append(compare(a.dir, a.base, "entries.csv", "id", e[1],
-                                protected={"id", "found_by", "date_added"},
-                                review={"term", "era", "date", "status", "quote", "source", "locator"}))
+            base_entries = compare(a.dir, a.base, "entries.csv", "id", e[1],
+                                   protected={"id", "found_by", "date_added"},
+                                   review={"term", "era", "date", "status", "quote", "source", "locator",
+                                           "source_url"},
+                                   allow_remove=allow_remove)
+        else:
+            err("entries.csv: the comparison with the base was not made because the file did not "
+                "load or its header is wrong")
         if r and r[0] == REGISTER_HEADER:
-            done.append(compare(a.dir, a.base, "register.csv", "reg_id", r[1],
-                                protected={"reg_id", "date_added"},
-                                review={"concept", "option", "type", "entry_id", "tier", "status",
-                                        "decided_by", "decided_date"}))
-        if done and not all(done):
-            warnings.append(f"could not read {a.base} from git, so the comparison with the previous "
-                            f"version was skipped (try: git fetch origin, or use --base REF)")
+            compare(a.dir, a.base, "register.csv", "reg_id", r[1],
+                    protected={"reg_id", "date_added"},
+                    review={"concept", "option", "type", "entry_id", "tier", "status",
+                            "decided_by", "decided_date"},
+                    allow_remove=allow_remove)
+        else:
+            err("register.csv: the comparison with the base was not made because the file did not "
+                "load or its header is wrong")
+        check_changed_files(a.dir, a.base, set(a.allow_file))
+        for fname, key in sorted(allow_remove - allow_remove_used):
+            warnings.append(f"--allow-remove {fname}:{key} was given but that row was not removed")
+
+    if e and e[0] == ENTRIES_HEADER:
+        check_source_urls(e[1], base_entries)
 
     for n in notes:
         print("NOTE   ", n)
@@ -264,13 +448,19 @@ def main():
         print("WARNING", w)
     for x in errors:
         print("ERROR  ", x)
+    if missing_dates:
+        print()
+        print("MISSING DATES:")
+        for m in missing_dates:
+            print("  " + m)
+        print("Stop and report this list. Do not fill in the dates.")
     print()
     if errors:
         print(f"FAILED: {len(errors)} error(s), {len(warnings)} warning(s).")
-        print("Not checked by this script: quote fidelity against the source, who decided a tier.")
+        print("Not checked by this script: quote fidelity for sources it cannot fetch, who decided a tier.")
         return 1
     print(f"OK: no errors, {len(warnings)} warning(s).")
-    print("Not checked by this script: quote fidelity against the source, who decided a tier.")
+    print("Not checked by this script: quote fidelity for sources it cannot fetch, who decided a tier.")
     return 0
 
 

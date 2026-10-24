@@ -26,9 +26,10 @@ A small research database of historically attested English words and phrases (Ol
 | `locator` | Where in the source: record number, entry, chapter, page or similar. |
 | `found_by` | Who first added the entry. Never overwritten. |
 | `last_verified_by` | Name of the most recent person who verified the entry against its source (for example Claude, Grok, ChatGPT or the user). Empty until someone has. |
-| `last_verified_date` | Date of that verification, `YYYY-MM-DD`. Empty until verified. |
+| `last_verified_date` | Date of that verification, `YYYY-MM-DD`. Empty until verified. Required whenever `last_verified_by` is set, except when `last_verified_by` is exactly `User`, where it may be blank or filled. |
 | `change_note` | Short note on what a verifier corrected. Empty if nothing was changed. |
 | `date_added` | Date the row was added, `YYYY-MM-DD`. |
+| `source_url` | The exact web address that was opened to find the quote. Always the last column. Required for a new or changed HIT quote unless `found_by` is exactly `User`. Empty for rows added before this column existed; do not guess it. |
 
 Empty fields stay empty. Do not guess a definition, spelling or date.
 
@@ -100,16 +101,28 @@ If `entry_id` is set, the register view looks up that `id` in `entries.csv` and 
 
 ## Checking changes (for anyone adding or reviewing rows)
 
-Run `python3 check.py` before pushing, and again when reviewing someone else's change. It needs only Python 3. Run `git fetch origin` first so it can compare against `origin/main`.
+Run `git fetch origin` and then `python3 check.py` before pushing, and again when reviewing someone else's change. It needs only Python 3. A run only counts if the comparison with `origin/main` was made, which it shows as `compared with origin/main` NOTE lines.
+
+```
+python3 check.py --allow-file entries.csv --allow-file index.html --allow-remove entries.csv:3
+```
+
+- `--allow-file NAME` (repeatable): a file the task may change. The script lists every file that differs from the base, including staged, committed-on-branch and untracked files. Any changed file not named this way is an error. With no `--allow-file`, no changed file is allowed.
+- `--allow-remove FILE:KEY` (repeatable): a row the task may delete, for example `entries.csv:3`. Any other removed row is an error; a removal named this way is only a note.
+- `--base REF`: compare with REF instead of `origin/main`.
+- `--no-base`: debugging only. It adds an error, because a run without the comparison is not a valid pre-merge run.
 
 It reports errors (exit status 1, fix before pushing), warnings and notes. It checks:
 
 - both files are valid UTF-8 CSV with exactly the expected header row, and every row has the right number of fields;
 - `id` and `reg_id` values are present and unique;
 - `status` is HIT or BUILD, and every HIT row has a quote, source and locator;
-- `era`, dates, `type` and the verification fields are well-formed, and a verified row has both a name and a date;
+- `era`, dates and `type` are well-formed;
+- verification: if `last_verified_by` is exactly `User`, `last_verified_date` may be blank or filled. If it is any other non-blank value, the date is required, and a blank date is an error that is also listed under a separate `MISSING DATES:` heading. A date with a blank `last_verified_by` is an error. A missing date must never be invented or filled in; stop and report the list;
 - every non-blank `entry_id` in `register.csv` matches an `id` in `entries.csv`;
-- compared with `origin/main`: which rows were added, removed or changed. Changing `found_by` or `date_added` on an existing row is an error. Changes to an existing quote, source, locator, date, era, status, term or register value are flagged as warnings for a person to confirm;
+- the comparison with the base is required. If it cannot be done for any reason (no git, no `origin/main`, the file is missing there or unreadable), that is an error. It reports which rows were added, removed or changed. A row that exists in the base but not in the working file is an error unless named with `--allow-remove`. Changing `found_by` or `date_added` on an existing row is an error. Changes to an existing quote, source, locator, date, era, status, term, `source_url` or register value are warnings for a person to confirm;
+- `source_url`: for HIT rows that are new compared with the base, or whose quote changed, and whose `found_by` is not exactly `User`, `source_url` is required and must start with `http://` or `https://`. Existing HIT rows with a blank `source_url` are listed in one note, not as errors. Rows whose `found_by` is `User` are never fetched;
+- fetch-and-match: for the rows that need a `source_url`, if its host is on the `FETCHABLE_HOSTS` list at the top of `check.py` (currently `artflsrv04.uchicago.edu` and `bosworthtoller.com`), the script fetches the page (20-second timeout), strips tags, decodes entities, normalises to NFC and collapses whitespace, and requires the quote to appear in the page text. A quote containing `...` or `…` is split there and each piece must appear. A failed match is an error; a failed fetch (network, timeout, HTTP error) is an error saying the quote could not be checked. A host not on the list gives a note, "not machine-checkable, needs a person". To add a site, add its hostname to `FETCHABLE_HOSTS`;
 - which rows are marked verified and which register rows carry a tier, so a reviewer can confirm each one.
 
-It cannot check that a quote matches its source, that a tier was the author's decision. A person or a second reviewer must check those. A passing run means the structure and rules it covers are fine, not that the content is correct.
+It cannot check that a quote matches a source it cannot fetch, or that a tier was the author's decision. A person or a second reviewer must check those. A passing run means the structure and rules it covers are fine, not that the content is correct.
