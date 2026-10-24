@@ -49,7 +49,6 @@ Never mix the two: a BUILD row is never presented as attested, and a HIT row is 
 ## Rules for the data
 
 - Copy quotes, spellings and dates exactly as the source gives them. Do not invent or "improve" them.
-- Outside a quotation, keep archaic second-person pronouns and archaic verb endings out of every term and note. Write notes in plain modern English.
 
 ## Adding a row
 
@@ -109,9 +108,8 @@ It reports errors (exit status 1, fix before pushing), warnings and notes. It ch
 - `id` and `reg_id` values are present and unique;
 - `status` is HIT or BUILD, and every HIT row has a quote, source and locator;
 - `era`, dates, `type` and the verification fields are well-formed, and a verified row has both a name and a date;
-- no archaic second-person forms (the old "thou" family) appear outside a quotation;
 - every non-blank `entry_id` in `register.csv` matches an `id` in `entries.csv`;
 - compared with `origin/main`: which rows were added, removed or changed. Changing `found_by` or `date_added` on an existing row is an error. Changes to an existing quote, source, locator, date, era, status, term or register value are flagged as warnings for a person to confirm;
 - which rows are marked verified and which register rows carry a tier, so a reviewer can confirm each one.
 
-It cannot check that a quote matches its source, that a tier was the author's decision, or the style rule on archaic verb endings. A person or a second reviewer must check those. A passing run means the structure and rules it covers are fine, not that the content is correct.
+It cannot check that a quote matches its source, that a tier was the author's decision. A person or a second reviewer must check those. A passing run means the structure and rules it covers are fine, not that the content is correct.

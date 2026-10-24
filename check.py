@@ -11,8 +11,8 @@ Exit status is 0 only if there are no errors. Warnings and notes do not fail the
 Standard library only. Anyone (any assistant or person) can run it.
 
 It checks structure and rules that a program can decide. It cannot check that a quote is
-faithful to its source, that a tier was really the author's decision, or the style rule on
-archaic verb endings; those need a person or a second reader.
+faithful to its source or that a tier was really the author's decision; those need a person or a
+second reader.
 """
 import argparse
 import csv
@@ -32,8 +32,6 @@ REGISTER_HEADER = ("reg_id,concept,option,type,entry_id,tier,status,chapter,deci
 ERA_RE = re.compile(r"^L?(OE|ME|EME|ModE)$")
 STATUSES = {"HIT", "BUILD"}
 TYPES = {"word", "phrase", "construction"}
-# Archaic second-person forms must not appear outside a quotation (README rule).
-ARCHAIC_RE = re.compile(r"\b(thee|thou|thy|thine|ye)\b", re.IGNORECASE)
 
 errors, warnings, notes = [], [], []
 
@@ -97,13 +95,6 @@ def check_dates(name, who, r, cols):
             err(f"{name} {who}: {c} '{v}' is not a valid YYYY-MM-DD date")
 
 
-def check_archaic(name, who, r, cols):
-    for c in cols:
-        m = ARCHAIC_RE.search(r.get(c, ""))
-        if m:
-            err(f"{name} {who}: archaic form '{m.group(0)}' in {c} (not allowed outside a quotation)")
-
-
 def check_entries(header, rows):
     name = "entries.csv"
     if header != ENTRIES_HEADER:
@@ -139,8 +130,6 @@ def check_entries(header, rows):
             err(f"{name} {who}: last_verified_date is set but last_verified_by is empty")
         if r["change_note"] and not r["last_verified_by"]:
             err(f"{name} {who}: change_note is set but the row is not marked verified")
-        check_archaic(name, who, r, ["term", "modern_spelling", "historical_spelling", "job",
-                                     "definition", "usage_notes", "change_note"])
     verified = [i for i, r in ids.items() if r["last_verified_by"]]
     if verified:
         notes.append("entries.csv: rows marked verified (a person must have opened the source "
@@ -172,7 +161,6 @@ def check_register(header, rows, entry_ids):
         if not parse_date(r["date_added"]):
             err(f"{name} {who}: date_added '{r['date_added']}' is not a valid YYYY-MM-DD date")
         check_dates(name, who, r, ["decided_date"])
-        check_archaic(name, who, r, ["notes"])
         if r["tier"]:
             tiered.append(r["reg_id"])
             if not (r["decided_by"] and r["decided_date"]):
@@ -279,12 +267,10 @@ def main():
     print()
     if errors:
         print(f"FAILED: {len(errors)} error(s), {len(warnings)} warning(s).")
-        print("Not checked by this script: quote fidelity against the source, who decided a tier, "
-              "and archaic -est/-eth verb endings.")
+        print("Not checked by this script: quote fidelity against the source, who decided a tier.")
         return 1
     print(f"OK: no errors, {len(warnings)} warning(s).")
-    print("Not checked by this script: quote fidelity against the source, who decided a tier, "
-          "and archaic -est/-eth verb endings.")
+    print("Not checked by this script: quote fidelity against the source, who decided a tier.")
     return 0
 
 
