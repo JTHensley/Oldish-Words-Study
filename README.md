@@ -4,7 +4,7 @@ Historical English Research Database
 A small research database of historically attested English words and phrases (Old, Middle, Early Modern and Modern English), kept for a novelist's constructed register.
 
 - `entries.csv` holds the data, one row per entry.
-- `register.csv` holds the Wōdlund register (see below), one row per option.
+- `register.csv` holds the Wōdlund register (see below), one row per word, phrase or construction.
 - `index.html` is a single self-contained page that loads `entries.csv` and `register.csv` from the same folder and lets you search and filter them. A switch at the top moves between the Evidence view and the Wōdlund register view. It makes no other network calls. Browsers block `fetch` on `file://` pages, so view it through a web server (for example `python3 -m http.server`) rather than by double-clicking.
 
 ## Columns
@@ -69,15 +69,15 @@ Never mix the two: a BUILD row is never presented as attested, and a HIT row is 
 | Column | Meaning |
 |---|---|
 | `reg_id` | Unique number for the row. |
-| `concept` | The job or idea (for example "think about something"). Several rows can share a concept, one row per option the author uses. |
-| `option` | The actual word, phrase or construction. |
+| `entry` | The actual word, phrase or construction. |
+| `concepts` | Every shared meaning the entry covers, separated by semicolons, for example "barely; hardly". Labels are short, plain and identical wherever reused. A comma may be used inside one label. |
 | `type` | `word`, `phrase` or `construction`. |
 | `pos` | Part or parts of speech, separated by semicolons (for example adverb; adjective). |
 | `entry_id` | The `id` of the matching row in `entries.csv`. Blank if no evidence row exists yet. |
 | `tier` | One value, or blank. Blank means undecided. |
 | `status` | Blank by default. Set only by the author. |
 | `chapter` | Chapter reference where it is used, if known. |
-| `era_range` | Span of eras where the option is attested, as found in the research (for example OE to ModE). Blank until researched. |
+| `era_range` | Span of eras where the entry is attested, as found in the research (for example OE to ModE). Blank until researched. |
 | `decided_by` | Who recorded the author's decision. |
 | `decided_date` | When it was recorded, `YYYY-MM-DD`. |
 | `notes` | Free text. |
@@ -93,7 +93,7 @@ Never mix the two: a BUILD row is never presented as attested, and a HIT row is 
 
 1. Only add a row when the author has decided it. Do not invent or seed terms.
 2. Open `register.csv` and add a line at the end, fields in the order of the header row, with the next unused `reg_id`.
-3. Fill `concept`, `option` and `type`. Fill `tier`, `status`, `decided_by` and `decided_date` only from the author's stated decision, otherwise leave them empty.
+3. Fill `entry`, `concepts` and `type`. Fill `tier`, `status`, `decided_by` and `decided_date` only from the author's stated decision, otherwise leave them empty.
 4. Quote any field that contains a comma, quote or line break, and double any quote inside it.
 5. Save as UTF-8 and keep the macron on Ō exactly.
 
