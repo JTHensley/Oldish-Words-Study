@@ -45,7 +45,7 @@ FETCH_TIMEOUT_SECONDS = 20
 ENTRIES_HEADER = ("id,term,modern_spelling,historical_spelling,era,date,status,job,definition,"
                   "usage_notes,quote,source,locator,found_by,last_verified_by,"
                   "last_verified_date,change_note,date_added,source_url").split(",")
-REGISTER_HEADER = ("reg_id,concept,option,type,pos,entry_id,tier,status,chapter,era_range,"
+REGISTER_HEADER = ("reg_id,entry,concepts,type,pos,entry_id,tier,status,chapter,era_range,"
                    "decided_by,decided_date,notes,date_added").split(",")
 
 ERA_RE = re.compile(r"^L?(OE|ME|EME|ModE)$")
@@ -175,7 +175,7 @@ def check_register(header, rows, entry_ids):
         elif r["reg_id"] in seen:
             err(f"{name} {who}: duplicate reg_id")
         seen.add(r["reg_id"])
-        for c in ("concept", "option"):
+        for c in ("concepts", "entry"):
             if not r[c]:
                 err(f"{name} {who}: {c} is empty")
         if r["type"] not in TYPES:
@@ -459,7 +459,7 @@ def main():
         if r and r[0] == REGISTER_HEADER:
             compare(a.dir, a.base, "register.csv", "reg_id", r[1],
                     protected={"reg_id", "date_added"},
-                    review={"concept", "option", "type", "entry_id", "tier", "status",
+                    review={"entry", "concepts", "type", "entry_id", "tier", "status",
                             "decided_by", "decided_date"},
                     allow_remove=allow_remove)
         else:
