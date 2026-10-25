@@ -72,10 +72,12 @@ Never mix the two: a BUILD row is never presented as attested, and a HIT row is 
 | `concept` | The job or idea (for example "think about something"). Several rows can share a concept, one row per option the author uses. |
 | `option` | The actual word, phrase or construction. |
 | `type` | `word`, `phrase` or `construction`. |
+| `pos` | Part or parts of speech, separated by semicolons (for example adverb; adjective). |
 | `entry_id` | The `id` of the matching row in `entries.csv`. Blank if no evidence row exists yet. |
 | `tier` | One value, or blank. Blank means undecided. |
 | `status` | Blank by default. Set only by the author. |
 | `chapter` | Chapter reference where it is used, if known. |
+| `era_range` | Span of eras where the option is attested, as found in the research (for example OE to ModE). Blank until researched. |
 | `decided_by` | Who recorded the author's decision. |
 | `decided_date` | When it was recorded, `YYYY-MM-DD`. |
 | `notes` | Free text. |
