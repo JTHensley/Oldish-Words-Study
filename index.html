@@ -236,6 +236,8 @@
     var meta = [r.type, r.tier ? "Tier: " + r.tier : "Tier: undecided"];
     if (r.status) meta.push("Status: " + r.status);
     if (r.chapter) meta.push("Chapter: " + r.chapter);
+    if (r.era_range) meta.push("Era: " + r.era_range);
+    if (r.pos) meta.splice(1, 0, r.pos);
     c.appendChild(el("div", "meta", meta.join(" · ")));
     if (!r.entry_id.trim()) c.appendChild(el("div", "field note", "No evidence row yet"));
     else {
@@ -286,7 +288,7 @@
       reg = t.map(function (cells) {
         var o = {};
         head.forEach(function (h, i) { o[h.trim()] = cells[i] || ""; });
-        ["reg_id","concept","option","type","entry_id","tier","status","chapter","decided_by","decided_date","notes"]
+        ["reg_id","concept","option","type","pos","entry_id","tier","status","chapter","era_range","decided_by","decided_date","notes"]
           .forEach(function (k) { if (o[k] === undefined) o[k] = ""; });
         return o;
       });

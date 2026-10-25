@@ -45,8 +45,8 @@ FETCH_TIMEOUT_SECONDS = 20
 ENTRIES_HEADER = ("id,term,modern_spelling,historical_spelling,era,date,status,job,definition,"
                   "usage_notes,quote,source,locator,found_by,last_verified_by,"
                   "last_verified_date,change_note,date_added,source_url").split(",")
-REGISTER_HEADER = ("reg_id,concept,option,type,entry_id,tier,status,chapter,decided_by,"
-                   "decided_date,notes,date_added").split(",")
+REGISTER_HEADER = ("reg_id,concept,option,type,pos,entry_id,tier,status,chapter,era_range,"
+                   "decided_by,decided_date,notes,date_added").split(",")
 
 ERA_RE = re.compile(r"^L?(OE|ME|EME|ModE)$")
 STATUSES = {"HIT", "BUILD"}
