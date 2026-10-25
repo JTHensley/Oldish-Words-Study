@@ -46,7 +46,7 @@ ENTRIES_HEADER = ("id,term,modern_spelling,historical_spelling,era,date,status,j
                   "usage_notes,quote,source,locator,found_by,last_verified_by,"
                   "last_verified_date,change_note,date_added,source_url").split(",")
 REGISTER_HEADER = ("reg_id,entry,concepts,type,pos,entry_id,tier,status,chapter,era_range,"
-                   "decided_by,decided_date,notes,date_added").split(",")
+                   "notes,date_added").split(",")
 
 ERA_RE = re.compile(r"^L?(OE|ME|EME|ModE)$")
 STATUSES = {"HIT", "BUILD"}
@@ -184,13 +184,8 @@ def check_register(header, rows, entry_ids):
             err(f"{name} {who}: entry_id '{r['entry_id']}' matches no id in entries.csv")
         if not parse_date(r["date_added"]):
             err(f"{name} {who}: date_added '{r['date_added']}' is not a valid YYYY-MM-DD date")
-        check_dates(name, who, r, ["decided_date"])
         if r["tier"]:
             tiered.append(r["reg_id"])
-            if not (r["decided_by"] and r["decided_date"]):
-                warnings.append(f"{name} {who}: tier is set but decided_by / decided_date is empty")
-        if r["status"] and not (r["decided_by"] and r["decided_date"]):
-            warnings.append(f"{name} {who}: status is set but decided_by / decided_date is empty")
     if tiered:
         notes.append("register.csv: rows with a tier set (only the author may decide a tier; "
                      "confirm each came from the author): reg_id " + ", ".join(tiered))
@@ -459,8 +454,7 @@ def main():
         if r and r[0] == REGISTER_HEADER:
             compare(a.dir, a.base, "register.csv", "reg_id", r[1],
                     protected={"reg_id", "date_added"},
-                    review={"entry", "concepts", "type", "entry_id", "tier", "status",
-                            "decided_by", "decided_date"},
+                    review={"entry", "concepts", "type", "entry_id", "tier", "status"},
                     allow_remove=allow_remove)
         else:
             err("register.csv: the comparison with the base was not made because the file did not "

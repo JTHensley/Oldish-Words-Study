@@ -74,26 +74,24 @@ Never mix the two: a BUILD row is never presented as attested, and a HIT row is 
 | `type` | `word`, `phrase` or `construction`. |
 | `pos` | Part or parts of speech, separated by semicolons (for example adverb; adjective). |
 | `entry_id` | The `id` of the matching row in `entries.csv`. Blank if no evidence row exists yet. |
-| `tier` | One value, or blank. Blank means undecided. |
+| `tier` | One or more values separated by semicolons (for example 3; 4), or blank. Blank means undecided. |
 | `status` | Blank by default. Set only by the author. |
 | `chapter` | Chapter reference where it is used, if known. |
 | `era_range` | Span of eras where the entry is attested, as found in the research (for example OE to ModE). Blank until researched. |
-| `decided_by` | Who recorded the author's decision. |
-| `decided_date` | When it was recorded, `YYYY-MM-DD`. |
 | `notes` | Free text. |
 | `date_added` | Date the row was added, `YYYY-MM-DD`. |
 
 ### Tier rule
 
-- A row holds exactly one tier, and the page filters by one tier at a time.
+- A row may hold more than one tier, separated by semicolons. The page lists the row under each of them and filters by one tier at a time.
 - Tier is decided only by the author. No assistant proposes, hints at, infers or changes a tier. A tier value entered without the author's instruction is an error to be reversed.
-- The page builds its tier filter from the tier values that actually appear in `register.csv`, plus "All tiers" and "Undecided (blank)".
+- The page builds its tier filter from the individual tier values that actually appear in `register.csv`, plus "All tiers" and "Undecided (blank)".
 
 ### Adding a row
 
 1. Only add a row when the author has decided it. Do not invent or seed terms.
 2. Open `register.csv` and add a line at the end, fields in the order of the header row, with the next unused `reg_id`.
-3. Fill `entry`, `concepts` and `type`. Fill `tier`, `status`, `decided_by` and `decided_date` only from the author's stated decision, otherwise leave them empty.
+3. Fill `entry`, `concepts` and `type`. Fill `tier` and `status` only from the author's stated decision, otherwise leave them empty.
 4. Quote any field that contains a comma, quote or line break, and double any quote inside it.
 5. Save as UTF-8 and keep the macron on Ō exactly.
 

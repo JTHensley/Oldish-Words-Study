@@ -219,7 +219,7 @@
 
   function fillRegSelect(sel, key) {
     var seen = {};
-    reg.forEach(function (r) { if (r[key]) seen[r[key]] = 1; });
+    reg.forEach(function (r) { (key === "tier" ? (r[key] || "").split(";").map(function (s) { return s.trim(); }) : [r[key]]).forEach(function (v) { if (v) seen[v] = 1; }); });
     Object.keys(seen).sort(function (a, b) { return a.localeCompare(b, undefined, { numeric: true }); })
       .forEach(function (v) { var o = el("option", "", v); o.value = v; sel.appendChild(o); });
   }
@@ -248,8 +248,6 @@
         .forEach(function (n) { if (n) c.appendChild(n); });
     }
     var n = field("Notes", r.notes); if (n) c.appendChild(n);
-    var d = [r.decided_by && "Decided by " + r.decided_by, r.decided_date].filter(Boolean).join(", ");
-    if (d) c.appendChild(el("div", "foot", d));
     return c;
   }
 
@@ -258,7 +256,7 @@
     $rres.textContent = "";
     if (!reg.length) { $rcount.textContent = ""; $rres.appendChild(el("div", "msg", "No register entries yet.")); return; }
     var hits = reg.filter(function (r) {
-      if (tier === "__blank" ? r.tier : (tier !== "__all" && r.tier !== tier)) return false;
+      if (tier === "__blank" ? r.tier : (tier !== "__all" && (r.tier || "").split(";").map(function (s) { return s.trim(); }).indexOf(tier) === -1)) return false;
       if (st === "__unset" ? r.status : (st !== "__all" && r.status !== st)) return false;
       if (ty !== "__all" && r.type !== ty) return false;
       return !q || [r.concepts, r.entry, r.notes].some(function (v) { return norm(v).indexOf(q) !== -1; });
@@ -291,7 +289,7 @@
       reg = t.map(function (cells) {
         var o = {};
         head.forEach(function (h, i) { o[h.trim()] = cells[i] || ""; });
-        ["reg_id","entry","concepts","type","pos","entry_id","tier","status","chapter","era_range","decided_by","decided_date","notes"]
+        ["reg_id","entry","concepts","type","pos","entry_id","tier","status","chapter","era_range","notes"]
           .forEach(function (k) { if (o[k] === undefined) o[k] = ""; });
         return o;
       });
