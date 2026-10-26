@@ -41,7 +41,7 @@
   .foot { margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--line);
     text-align: right; font-size: .75rem; color: var(--muted); overflow-wrap: anywhere; }
   .foot div + div { margin-top: 2px; }
-  .switch { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-bottom: 12px;
+  .switch { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; margin-bottom: 12px;
     border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
   .switch button { padding: 10px 6px; font: inherit; color: var(--ink); background: var(--card);
     border: 0; cursor: pointer; overflow-wrap: anywhere; }
@@ -55,6 +55,10 @@
   .opt { background: var(--card); border: 1px solid var(--line); border-left: 6px solid var(--muted);
     border-radius: 6px; padding: 10px 14px; margin-bottom: 8px; }
   .opt .term { font-size: 1.1rem; }
+  .letter { font-size: 1.3rem; font-weight: bold; margin: 22px 0 8px; padding-bottom: 2px;
+    border-bottom: 2px solid var(--line); }
+  .opt.flash { outline: 3px solid var(--ink); }
+  .field a { overflow-wrap: anywhere; }
   .opt .note { color: var(--muted); font-size: .9rem; }
   .msg { text-align: center; color: var(--muted); padding: 32px 8px; }
 </style>
@@ -65,6 +69,7 @@
   <div class="switch" role="group" aria-label="View">
     <button type="button" id="btn-ev" aria-pressed="true">Evidence</button>
     <button type="button" id="btn-rg" aria-pressed="false">Wōdlund register</button>
+    <button type="button" id="btn-gr" aria-pressed="false">Wōdlund syntax and grammar</button>
   </div>
   <section id="view-ev">
   <div class="controls">
@@ -84,6 +89,13 @@
     </div>
     <div class="count" id="rcount" aria-live="polite"></div>
     <div id="rresults"></div>
+  </section>
+  <section id="view-gr" hidden>
+    <div class="controls">
+      <input type="search" id="gq" placeholder="Search syntax and grammar…" aria-label="Search syntax and grammar" style="grid-column: 1 / -1">
+    </div>
+    <div class="count" id="gcount" aria-live="polite"></div>
+    <div id="gresults"></div>
   </section>
 </main>
 <script>
@@ -247,6 +259,7 @@
             field("Source", e.source), field("Locator", e.locator)]
         .forEach(function (n) { if (n) c.appendChild(n); });
     }
+    var fl = featureLinks(r); if (fl) c.appendChild(fl);
     var n = field("Notes", r.notes); if (n) c.appendChild(n);
     return c;
   }
@@ -272,9 +285,17 @@
     });
     $rcount.textContent = hits.length + " of " + reg.length + " entries in " + order.length + " concepts";
     if (!hits.length) { $rres.appendChild(el("div", "msg", "No matching register entries. Try a different search or clear the filters.")); return; }
+    // Alphabetical by concept, then by entry within a concept. Concepts that do not start with
+    // A-Z (after removing accents) are listed last under "#".
+    order.sort(function (a, b) { return alphaCompare(a, b); });
+    var letter = null;
     order.forEach(function (k) {
+      var L = letterOf(k);
+      if (L !== letter) { letter = L; $rres.appendChild(el("h3", "letter", L)); }
       var g = el("section", "group"); g.appendChild(el("h2", "", k));
-      groups[k].forEach(function (r) { g.appendChild(optionBlock(r)); });
+      groups[k].slice().sort(function (a, b) {
+        return alphaCompare(a.entry, b.entry) || (parseFloat(a.reg_id) - parseFloat(b.reg_id)) || 0;
+      }).forEach(function (r) { g.appendChild(optionBlock(r)); });
       $rres.appendChild(g);
     });
   }
@@ -289,7 +310,7 @@
       reg = t.map(function (cells) {
         var o = {};
         head.forEach(function (h, i) { o[h.trim()] = cells[i] || ""; });
-        ["reg_id","entry","concepts","type","pos","entry_id","tier","status","chapter","era_range","notes"]
+        ["reg_id","entry","concepts","type","pos","entry_id","tier","status","chapter","era_range","features","notes"]
           .forEach(function (k) { if (o[k] === undefined) o[k] = ""; });
         return o;
       });
@@ -302,16 +323,134 @@
     });
   }
 
-  var views = { ev: document.getElementById("view-ev"), rg: document.getElementById("view-rg") },
-      btns = { ev: document.getElementById("btn-ev"), rg: document.getElementById("btn-rg") };
+  // ---- Wōdlund syntax and grammar view ----
+  var gram = [], gramLoaded = false;
+  var $gq = document.getElementById("gq"), $gres = document.getElementById("gresults"),
+      $gcount = document.getElementById("gcount");
+
+  function gramById(id) {
+    for (var i = 0; i < gram.length; i++) if (gram[i].gram_id.trim() === id) return gram[i];
+    return null;
+  }
+
+  function gramBlock(r) {
+    var c = el("article", "opt");
+    c.setAttribute("data-gram", r.gram_id.trim());
+    c.appendChild(el("div", "term", r.entry));
+    var meta = [];
+    if (r.chapter) meta.push("Chapter: " + r.chapter);
+    if (r.era_range) meta.push("Era: " + r.era_range);
+    if (meta.length) c.appendChild(el("div", "meta", meta.join(" · ")));
+    var d = field("", r.description); if (d) c.appendChild(d);
+    if (r.entry_id.trim()) {
+      var e = evidenceFor(r.entry_id);
+      if (!e) c.appendChild(el("div", "field note", "Evidence row not found"));
+      else [field("", e.quote ? "“" + e.quote + "”" : "", "quote"),
+            field("Source", e.source), field("Locator", e.locator)]
+        .forEach(function (n) { if (n) c.appendChild(n); });
+    }
+    var n = field("Notes", r.notes); if (n) c.appendChild(n);
+    return c;
+  }
+
+  function renderGram() {
+    var q = norm($gq.value.trim());
+    if (!gramLoaded) return;
+    $gres.textContent = "";
+    if (!gram.length) { $gcount.textContent = ""; $gres.appendChild(el("div", "msg", "No grammar entries yet.")); return; }
+    var hits = gram.filter(function (r) {
+      return !q || Object.keys(r).some(function (k) { return norm(r[k]).indexOf(q) !== -1; });
+    });
+    $gcount.textContent = hits.length + " of " + gram.length + " entries";
+    if (!hits.length) { $gres.appendChild(el("div", "msg", "No matching grammar entries. Try a different search.")); return; }
+    hits.forEach(function (r) { $gres.appendChild(gramBlock(r)); });
+  }
+
+  function loadGram() {
+    fetch("grammar.csv").then(function (resp) {
+      if (!resp.ok) throw new Error(resp.status);
+      return resp.text();
+    }).then(function (text) {
+      var t = parseCSV(text), head = t.shift() || [];
+      gram = t.map(function (cells) {
+        var o = {};
+        head.forEach(function (h, i) { o[h.trim()] = cells[i] || ""; });
+        ["gram_id","entry","description","entry_id","chapter","era_range","notes"]
+          .forEach(function (k) { if (o[k] === undefined) o[k] = ""; });
+        return o;
+      });
+      gramLoaded = true;
+      renderGram();
+      if (reg.length) renderReg();
+    }).catch(function () {
+      $gres.textContent = "";
+      $gres.appendChild(el("div", "msg", "Could not load grammar.csv. If you opened this file directly from disk, serve the folder with a local web server instead."));
+    });
+  }
+
+  // Features in the register are gram_id values separated by semicolons, shown as links to the
+  // matching rows in the grammar tab.
+  function featureLinks(r) {
+    var ids = (r.features || "").split(";").map(function (s) { return s.trim(); }).filter(Boolean);
+    if (!ids.length) return null;
+    var d = el("div", "field");
+    d.appendChild(el("b", "", "Features "));
+    ids.forEach(function (id, i) {
+      if (i) d.appendChild(document.createTextNode("; "));
+      var g = gramById(id);
+      if (g) {
+        var a = document.createElement("a");
+        a.href = "#gram-" + encodeURIComponent(id);
+        a.textContent = g.entry || id;
+        a.addEventListener("click", function (ev) { ev.preventDefault(); gotoGram(id); });
+        d.appendChild(a);
+      } else {
+        d.appendChild(document.createTextNode(id + (gramLoaded ? " (grammar row not found)" : "")));
+      }
+    });
+    return d;
+  }
+
+  function gotoGram(id) {
+    $gq.value = "";
+    show("gr");
+    var nodes = $gres.querySelectorAll("[data-gram]");
+    for (var i = 0; i < nodes.length; i++) {
+      if (nodes[i].getAttribute("data-gram") === id) {
+        nodes[i].scrollIntoView();
+        nodes[i].classList.add("flash");
+        (function (n) { setTimeout(function () { n.classList.remove("flash"); }, 1800); })(nodes[i]);
+        break;
+      }
+    }
+  }
+
+  // Sorting for the register: remove accents, lower-case, compare by code point.
+  function fold(x) { return x.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim(); }
+  function letterOf(x) { var c = fold(x).charAt(0); return /[a-z]/.test(c) ? c.toUpperCase() : "#"; }
+  function alphaCompare(a, b) {
+    var la = letterOf(a), lb = letterOf(b);
+    if (la !== lb) return la === "#" ? 1 : lb === "#" ? -1 : (la < lb ? -1 : 1);
+    var fa = fold(a), fb = fold(b);
+    return fa < fb ? -1 : fa > fb ? 1 : (a < b ? -1 : a > b ? 1 : 0);
+  }
+
+  var views = { ev: document.getElementById("view-ev"), rg: document.getElementById("view-rg"),
+                gr: document.getElementById("view-gr") },
+      btns = { ev: document.getElementById("btn-ev"), rg: document.getElementById("btn-rg"),
+               gr: document.getElementById("btn-gr") };
   function show(which) {
     Object.keys(views).forEach(function (k) {
       views[k].hidden = k !== which; btns[k].setAttribute("aria-pressed", k === which ? "true" : "false");
     });
     if (which === "rg") { loadReg(); if (regLoaded && reg.length) renderReg(); }
+    if (which === "gr") renderGram();
   }
   btns.ev.addEventListener("click", function () { show("ev"); });
   btns.rg.addEventListener("click", function () { show("rg"); });
+  btns.gr.addEventListener("click", function () { show("gr"); });
+  $gq.addEventListener("input", renderGram);
+  loadGram();
   $rq.addEventListener("input", renderReg);
   $rtier.addEventListener("change", renderReg);
   $rstatus.addEventListener("change", renderReg);

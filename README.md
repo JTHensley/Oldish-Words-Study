@@ -5,7 +5,8 @@ A small research database of historically attested English words and phrases (Ol
 
 - `entries.csv` holds the data, one row per entry.
 - `register.csv` holds the Wōdlund register (see below), one row per word, phrase or construction.
-- `index.html` is a single self-contained page that loads `entries.csv` and `register.csv` from the same folder and lets you search and filter them. A switch at the top moves between the Evidence view and the Wōdlund register view. It makes no other network calls. Browsers block `fetch` on `file://` pages, so view it through a web server (for example `python3 -m http.server`) rather than by double-clicking.
+- `grammar.csv` holds the Wōdlund syntax and grammar rows (see below), one row per pattern.
+- `index.html` is a single self-contained page that loads `entries.csv`, `register.csv` and `grammar.csv` from the same folder and lets you search and filter them. A switch at the top moves between the Evidence view, the Wōdlund register view and the Wōdlund syntax and grammar view. It makes no other network calls. Browsers block `fetch` on `file://` pages, so view it through a web server (for example `python3 -m http.server`) rather than by double-clicking.
 
 ## Columns
 
@@ -78,8 +79,16 @@ Never mix the two: a BUILD row is never presented as attested, and a HIT row is 
 | `status` | Blank by default. Set only by the author. |
 | `chapter` | Chapter reference where it is used, if known. |
 | `era_range` | Span of eras where the entry is attested, as found in the research (for example OE to ModE). Blank until researched. |
+| `features` | The `gram_id` values, separated by semicolons, of the rows in `grammar.csv` that describe the syntax or grammar this entry takes part in. Blank if none. Each value must match a `gram_id` in `grammar.csv`. |
 | `notes` | Free text. |
 | `date_added` | Date the row was added, `YYYY-MM-DD`. |
+
+### How the register is laid out on the page
+
+- Rows are sorted alphabetically by concept, and within a concept alphabetically by entry. Sorting ignores accents and capital letters.
+- A letter label (A to Z) appears between letter groups. Concepts that do not start with a letter A to Z are listed last, under "#".
+- A row with several concepts (separated by semicolons) is listed under each of its concepts.
+- Each entry shows its `features` as links. A link goes to the matching row in the Wōdlund syntax and grammar view. A value that matches no `gram_id` is shown as plain text.
 
 ### Tier rule
 
@@ -98,6 +107,25 @@ Never mix the two: a BUILD row is never presented as attested, and a HIT row is 
 ### How `entry_id` links to the evidence
 
 If `entry_id` is set, the register view looks up that `id` in `entries.csv` and shows the quote, source and locator under the option. If the id is not found, it shows "Evidence row not found". If `entry_id` is blank, it shows "No evidence row yet".
+
+## Wōdlund syntax and grammar
+
+`grammar.csv` holds the syntax and grammar patterns that entries in the register can point to through their `features` column. Like the register, nothing is added to it without the author's decision. The committed file starts as a header row only. The page shows it in the third view, "Wōdlund syntax and grammar", with a search box.
+
+### Columns
+
+| Column | Meaning |
+|---|---|
+| `gram_id` | Unique identifier for the row. This is the value that `features` in `register.csv` refers to. |
+| `entry` | The syntax or grammar pattern. |
+| `description` | What the pattern is or does. |
+| `entry_id` | The `id` of the matching row in `entries.csv`. Blank if no evidence row exists yet. Every non-blank value must match an `id` in `entries.csv`. |
+| `chapter` | Chapter reference where it is used, if known. |
+| `era_range` | Span of eras where the pattern is attested, as found in the research. Blank until researched. |
+| `notes` | Free text. |
+| `date_added` | Date the row was added, `YYYY-MM-DD`. |
+
+To add a row, open `grammar.csv` and add a line at the end with the fields in the order of the header row and a `gram_id` not used before. Quote any field that contains a comma, quote or line break, and double any quote inside it. Save as UTF-8. To attach the pattern to a register entry, put its `gram_id` in that entry's `features` field, separating several with semicolons.
 
 ## Checking changes (for anyone adding or reviewing rows)
 
@@ -119,7 +147,8 @@ It reports errors (exit status 1, fix before pushing), warnings and notes. It ch
 - `status` is HIT or BUILD, and every HIT row has a quote, source and locator;
 - `era`, dates and `type` are well-formed;
 - verification: if `last_verified_by` is exactly `User`, `last_verified_date` may be blank or filled. If it is any other non-blank value, the date is required, and a blank date is an error that is also listed under a separate `MISSING DATES:` heading. A date with a blank `last_verified_by` is an error. A missing date must never be invented or filled in; stop and report the list;
-- every non-blank `entry_id` in `register.csv` matches an `id` in `entries.csv`;
+- every non-blank `entry_id` in `register.csv` and in `grammar.csv` matches an `id` in `entries.csv`, and every value in `features` matches a `gram_id` in `grammar.csv`;
+- `grammar.csv` has the exact expected header, rows with the right number of fields, a present and unique `gram_id`, and a well-formed `date_added`. Its comparison with the base works like the other files (a removal needs `--allow-remove`, `gram_id` and `date_added` are protected), except that if `grammar.csv` is not yet in `origin/main`, all its rows count as new and that is not an error;
 - the comparison with the base is required. If it cannot be done for any reason (no git, no `origin/main`, the file is missing there or unreadable), that is an error. It reports which rows were added, removed or changed. A row that exists in the base but not in the working file is an error unless named with `--allow-remove`. Changing `found_by` or `date_added` on an existing row is an error. Changes to an existing quote, source, locator, date, era, status, term, `source_url` or register value are warnings for a person to confirm;
 - `source_url`: for HIT rows that are new compared with the base, or whose quote changed, and whose `found_by` is not exactly `User`, `source_url` is required and must start with `http://` or `https://`. Existing HIT rows with a blank `source_url` are listed in one note, not as errors. Rows whose `found_by` is `User` are never fetched;
 - fetch-and-match: for the rows that need a `source_url`, if its host is on the `FETCHABLE_HOSTS` list at the top of `check.py` (currently `artflsrv04.uchicago.edu` and `bosworthtoller.com`), the script fetches the page (20-second timeout), strips tags, decodes entities, normalises to NFC and collapses whitespace, and requires the quote to appear in the page text. A quote containing `...` or `…` is split there and each piece must appear. A failed match is an error; a failed fetch (network, timeout, HTTP error) is an error saying the quote could not be checked. When the page is JSON, its text values are decoded before the quote is matched. The quote must appear in full in the page text, so a `source_url` should point to a page that shows the whole quote; a page that shows only a short window around the hit will fail a longer quote. A host not on the list gives a note, "not machine-checkable, needs a person". To add a site, add its hostname to `FETCHABLE_HOSTS`;
