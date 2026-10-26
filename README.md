@@ -16,7 +16,7 @@ A small research database of historically attested English words and phrases (Ol
 | `term` | The word or phrase as studied. |
 | `modern_spelling` | Modernised spelling, if one is supplied. |
 | `historical_spelling` | Spelling as it appears in the historical record, if supplied. |
-| `era` | `OE` Old English (c. 450–1150), `ME` Middle English (c. 1150–1500), `EMdE` Early Modern English (c. 1500–1700), `LMdE` Late Modern English (c. 1700–1945), `PDE` Present-Day English (c. 1945 to today). Prefix `L` for late evidence in OE, ME or EMdE (for example `LME`, `LEMdE`). |
+| `era` | `OE` Old English (c. 450–1150), `ME` Middle English (c. 1150–1500), `EMdE` Early Modern English (c. 1500–1700), `LMdE` Late Modern English (c. 1700–1945), `PDE` Present-Day English (c. 1945 to today). |
 | `date` | Date or date range of the attestation, as given by the source. |
 | `status` | `HIT` or `BUILD` (see below). |
 | `job` | What the term does in a sentence or scene (for example, declaring someone an outlaw). |
