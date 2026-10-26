@@ -1,7 +1,7 @@
 # Oldish-Words-Study
 Historical English Research Database
 
-A small research database of historically attested English words and phrases (Old, Middle, Early Modern and Modern English), kept for a novelist's constructed register.
+A small research database of historically attested English words and phrases (Old, Middle, Early Modern, Late Modern and Present-Day English), kept for a novelist's constructed register.
 
 - `entries.csv` holds the data, one row per entry.
 - `register.csv` holds the Wōdlund register (see below), one row per word, phrase or construction.
@@ -16,7 +16,7 @@ A small research database of historically attested English words and phrases (Ol
 | `term` | The word or phrase as studied. |
 | `modern_spelling` | Modernised spelling, if one is supplied. |
 | `historical_spelling` | Spelling as it appears in the historical record, if supplied. |
-| `era` | `OE` Old English, `ME` Middle English, `EME` Early Modern English, `ModE` Modern English. Prefix `L` for a late period (for example `LME`). |
+| `era` | `OE` Old English (c. 450–1150), `ME` Middle English (c. 1150–1500), `EMdE` Early Modern English (c. 1500–1700), `LMdE` Late Modern English (c. 1700–1945), `PDE` Present-Day English (c. 1945 to today). Prefix `L` for late evidence in OE, ME or EMdE (for example `LME`, `LEMdE`). |
 | `date` | Date or date range of the attestation, as given by the source. |
 | `status` | `HIT` or `BUILD` (see below). |
 | `job` | What the term does in a sentence or scene (for example, declaring someone an outlaw). |
@@ -78,7 +78,7 @@ Never mix the two: a BUILD row is never presented as attested, and a HIT row is 
 | `tier` | One or more values separated by semicolons (for example 3; 4), or blank. Blank means undecided. |
 | `status` | Blank by default. Set only by the author. |
 | `chapter` | Chapter reference where it is used, if known. |
-| `era_range` | Span of eras where the entry is attested, as found in the research (for example OE to ModE). Blank until researched. |
+| `era_range` | Span of eras where the entry is attested, as found in the research (for example OE to LMdE). Blank until researched. Uses the era codes defined for `era` in the Columns table. |
 | `features` | The `gram_id` values, separated by semicolons, of the rows in `grammar.csv` that describe the syntax or grammar this entry takes part in. Blank if none. Each value must match a `gram_id` in `grammar.csv`. |
 | `notes` | Free text. |
 | `date_added` | Date the row was added, `YYYY-MM-DD`. |
@@ -121,7 +121,7 @@ If `entry_id` is set, the register view looks up that `id` in `entries.csv` and 
 | `description` | What the pattern is or does. |
 | `entry_id` | The `id` of the matching row in `entries.csv`. Blank if no evidence row exists yet. Every non-blank value must match an `id` in `entries.csv`. |
 | `chapter` | Chapter reference where it is used, if known. |
-| `era_range` | Span of eras where the pattern is attested, as found in the research. Blank until researched. |
+| `era_range` | Span of eras where the pattern is attested, as found in the research. Blank until researched. Uses the era codes defined for `era` in the Columns table. |
 | `notes` | Free text. |
 | `date_added` | Date the row was added, `YYYY-MM-DD`. |
 

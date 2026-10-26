@@ -49,7 +49,7 @@ REGISTER_HEADER = ("reg_id,entry,concepts,type,pos,entry_id,tier,status,chapter,
                    "features,notes,date_added").split(",")
 GRAMMAR_HEADER = "gram_id,entry,description,entry_id,chapter,era_range,notes,date_added".split(",")
 
-ERA_RE = re.compile(r"^L?(OE|ME|EME|ModE)$")
+ERA_RE = re.compile(r"^(L?(OE|ME|EMdE)|LMdE|PDE)$")
 STATUSES = {"HIT", "BUILD"}
 TYPES = {"word", "phrase", "construction"}
 
@@ -141,7 +141,7 @@ def check_entries(header, rows):
                 if not r[c].strip():
                     err(f"{name} {who}: HIT row has empty {c}")
         if not ERA_RE.match(r["era"]):
-            err(f"{name} {who}: era '{r['era']}' must be OE, ME, EME or ModE (optional L prefix)")
+            err(f"{name} {who}: era '{r['era']}' must be OE, ME, EMdE, LMdE or PDE (optional L prefix on OE, ME and EMdE)")
         if not r["found_by"]:
             err(f"{name} {who}: found_by is empty")
         if not parse_date(r["date_added"]):
