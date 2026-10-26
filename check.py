@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mechanical checks for entries.csv and register.csv.
+"""Mechanical checks for entries.csv, register.csv and grammar.csv.
 
 Usage:
     python3 check.py --allow-file NAME [--allow-file NAME ...] [--allow-remove FILE:KEY ...]
@@ -46,7 +46,8 @@ ENTRIES_HEADER = ("id,term,modern_spelling,historical_spelling,era,date,status,j
                   "usage_notes,quote,source,locator,found_by,last_verified_by,"
                   "last_verified_date,change_note,date_added,source_url").split(",")
 REGISTER_HEADER = ("reg_id,entry,concepts,type,pos,entry_id,tier,status,chapter,era_range,"
-                   "notes,date_added").split(",")
+                   "features,notes,date_added").split(",")
+GRAMMAR_HEADER = "gram_id,entry,description,entry_id,chapter,era_range,notes,date_added".split(",")
 
 ERA_RE = re.compile(r"^L?(OE|ME|EME|ModE)$")
 STATUSES = {"HIT", "BUILD"}
@@ -161,7 +162,7 @@ def check_entries(header, rows):
     return ids
 
 
-def check_register(header, rows, entry_ids):
+def check_register(header, rows, entry_ids, gram_ids):
     name = "register.csv"
     if header != REGISTER_HEADER:
         err(f"{name}: header row is not exactly the expected one.\n    expected: {','.join(REGISTER_HEADER)}\n    found:    {','.join(header)}")
@@ -184,11 +185,37 @@ def check_register(header, rows, entry_ids):
             err(f"{name} {who}: entry_id '{r['entry_id']}' matches no id in entries.csv")
         if not parse_date(r["date_added"]):
             err(f"{name} {who}: date_added '{r['date_added']}' is not a valid YYYY-MM-DD date")
+        if gram_ids is not None:
+            for v in r["features"].split(";"):
+                v = v.strip()
+                if v and v not in gram_ids:
+                    err(f"{name} {who}: features value '{v}' matches no gram_id in grammar.csv")
         if r["tier"]:
             tiered.append(r["reg_id"])
     if tiered:
         notes.append("register.csv: rows with a tier set (only the author may decide a tier; "
                      "confirm each came from the author): reg_id " + ", ".join(tiered))
+
+
+def check_grammar(header, rows, entry_ids):
+    """Returns the set of gram_ids, or None if the header is wrong (already an ERROR)."""
+    name = "grammar.csv"
+    if header != GRAMMAR_HEADER:
+        err(f"{name}: header row is not exactly the expected one.\n    expected: {','.join(GRAMMAR_HEADER)}\n    found:    {','.join(header)}")
+        return None
+    seen = set()
+    for line, r in rows:
+        who = f"gram_id {r['gram_id'] or '(blank)'} (record {line})"
+        if not r["gram_id"]:
+            err(f"{name} record {line}: gram_id is empty")
+        elif r["gram_id"] in seen:
+            err(f"{name} {who}: duplicate gram_id")
+        seen.add(r["gram_id"])
+        if r["entry_id"] and r["entry_id"] not in entry_ids:
+            err(f"{name} {who}: entry_id '{r['entry_id']}' matches no id in entries.csv")
+        if not parse_date(r["date_added"]):
+            err(f"{name} {who}: date_added '{r['date_added']}' is not a valid YYYY-MM-DD date")
+    return seen
 
 
 def git_show(directory, ref, fname):
@@ -200,13 +227,30 @@ def git_show(directory, ref, fname):
         return None
 
 
-def compare(directory, ref, fname, key, new_rows, protected, review, allow_remove):
+def file_absent_in_base(directory, ref, fname):
+    """True only if ref resolves to a commit and fname is not in its tree."""
+    try:
+        subprocess.run(["git", "-C", directory, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"],
+                       capture_output=True, check=True)
+        out = subprocess.run(["git", "-C", directory, "ls-tree", "--full-tree", "--name-only", ref, "--", fname],
+                             capture_output=True, check=True).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return False
+    return out.strip() == b""
+
+
+def compare(directory, ref, fname, key, new_rows, protected, review, allow_remove, absent_ok=False):
     """Report rows added / removed / changed relative to ref.
 
     Returns the base rows as {key: row dict}, or None if the comparison could not be done
     (which is recorded as an ERROR).
     """
     base_bytes = git_show(directory, ref, fname)
+    if base_bytes is None and absent_ok and file_absent_in_base(directory, ref, fname):
+        keys = [r[key] for _, r in new_rows]
+        notes.append(f"{fname} compared with {ref}: file is not in {ref}, so all rows are new"
+                     + (f"; added {key}: " + ", ".join(keys) if keys else " (no rows)"))
+        return {}
     if base_bytes is None:
         err(f"{fname}: cannot compare with {ref}: could not read {fname} at {ref} "
             f"(no git, no {ref}, or the file is missing there; try: git fetch origin)")
@@ -431,11 +475,14 @@ def main():
 
     ebytes = read_file(os.path.join(a.dir, "entries.csv"))
     rbytes = read_file(os.path.join(a.dir, "register.csv"))
+    gbytes = read_file(os.path.join(a.dir, "grammar.csv"))
     e = load(ebytes, "entries.csv") if ebytes is not None else None
     r = load(rbytes, "register.csv") if rbytes is not None else None
+    g = load(gbytes, "grammar.csv") if gbytes is not None else None
     entry_ids = check_entries(*e) if e else {}
+    gram_ids = check_grammar(g[0], g[1], entry_ids) if g else None
     if r:
-        check_register(r[0], r[1], entry_ids)
+        check_register(r[0], r[1], entry_ids, gram_ids)
 
     base_entries = None
     if a.no_base:
@@ -454,10 +501,18 @@ def main():
         if r and r[0] == REGISTER_HEADER:
             compare(a.dir, a.base, "register.csv", "reg_id", r[1],
                     protected={"reg_id", "date_added"},
-                    review={"entry", "concepts", "type", "entry_id", "tier", "status"},
+                    review={"entry", "concepts", "type", "entry_id", "tier", "status", "features"},
                     allow_remove=allow_remove)
         else:
             err("register.csv: the comparison with the base was not made because the file did not "
+                "load or its header is wrong")
+        if g and g[0] == GRAMMAR_HEADER:
+            compare(a.dir, a.base, "grammar.csv", "gram_id", g[1],
+                    protected={"gram_id", "date_added"},
+                    review={"entry", "description", "entry_id"},
+                    allow_remove=allow_remove, absent_ok=True)
+        else:
+            err("grammar.csv: the comparison with the base was not made because the file did not "
                 "load or its header is wrong")
         check_changed_files(a.dir, a.base, set(a.allow_file))
         for fname, key in sorted(allow_remove - allow_remove_used):

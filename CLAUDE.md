@@ -1,6 +1,6 @@
 # Instructions for assistants working in this repository
 
-This repository holds two data layers: `entries.csv` (evidence) and `register.csv` (the Wōdlund register, the author's own choices). Read `README.md` for the columns and rules.
+This repository holds three data layers: `entries.csv` (evidence), `register.csv` (the Wōdlund register, the author's own choices) and `grammar.csv` (the Wōdlund syntax and grammar rows). Read `README.md` for the columns and rules.
 
 ## Do only what is asked
 - Make only the changes the user has specified. Do not add, invent, "improve" or re-spell any quote, spelling, date or term.
