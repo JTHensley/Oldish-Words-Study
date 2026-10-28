@@ -1,0 +1,12 @@
+name: Validate give ear
+on: push
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: register-give-ear-20261028
+          fetch-depth: 0
+      - run: git fetch origin main
+      - run: python3 check.py --allow-file entries.csv --allow-file register.csv
