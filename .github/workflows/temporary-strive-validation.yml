@@ -16,3 +16,5 @@ jobs:
         run: git fetch origin main
       - name: Run repository validator
         run: python3 check.py --allow-file entries.csv --allow-file register.csv
+
+# Trigger validation
