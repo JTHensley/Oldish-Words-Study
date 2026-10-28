@@ -1,0 +1,18 @@
+name: Temporary amble validation
+on:
+  pull_request:
+  push:
+    branches: [temporary-check-amble-20261028]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out amble branch
+        uses: actions/checkout@v4
+        with:
+          ref: add-amble-verb-noun-tier3-20261028
+          fetch-depth: 0
+      - name: Fetch main
+        run: git fetch origin main
+      - name: Run repository validator
+        run: python3 check.py --allow-file entries.csv --allow-file register.csv
