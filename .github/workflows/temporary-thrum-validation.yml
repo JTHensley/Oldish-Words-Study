@@ -1,5 +1,6 @@
 name: Temporary thrum validation
 on:
+  pull_request:
   push:
     branches: [temporary-check-thrum-20261027]
 jobs:
