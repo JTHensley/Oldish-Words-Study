@@ -1,0 +1,19 @@
+name: Temporary keen validation
+on:
+  push:
+    branches: [temporary-keen-validation-20261028]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out keen data branch
+        uses: actions/checkout@v4
+        with:
+          ref: register-keen-tier1-20261028
+          fetch-depth: 0
+      - name: Fetch origin main
+        run: git fetch origin main
+      - name: Run unmodified repository validator
+        run: python3 check.py --allow-file entries.csv --allow-file register.csv
