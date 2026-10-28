@@ -1,0 +1,18 @@
+name: Temporary nigh validation
+on:
+  pull_request:
+  push:
+    branches: [temporary-check-nigh-20261028]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out nigh branch
+        uses: actions/checkout@v4
+        with:
+          ref: add-nigh-tier1-20261028
+          fetch-depth: 0
+      - name: Fetch main
+        run: git fetch origin main
+      - name: Run repository validator
+        run: python3 check.py --allow-file entries.csv --allow-file register.csv
