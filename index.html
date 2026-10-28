@@ -60,6 +60,9 @@
   .opt.flash { outline: 3px solid var(--ink); }
   .field a { overflow-wrap: anywhere; }
   .opt .note { color: var(--muted); font-size: .9rem; }
+  .word .part + .part { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 8px; }
+  .concepts { margin: 4px 0; padding-left: 22px; }
+  .concepts li { margin: 0; }
   .msg { text-align: center; color: var(--muted); padding: 32px 8px; }
 </style>
 </head>
@@ -242,15 +245,22 @@
     return null;
   }
 
-  function optionBlock(r) {
-    var c = el("article", "opt");
-    c.appendChild(el("div", "term", r.entry));
+  // One part of a word's card: a single register row (one dictionary entry, one part of speech).
+  function partBlock(r) {
+    var c = el("div", "part");
     var meta = [r.type, r.tier ? "Tier: " + r.tier : "Tier: undecided"];
     if (r.status) meta.push("Status: " + r.status);
     if (r.chapter) meta.push("Chapter: " + r.chapter);
     if (r.era_range) meta.push("Era: " + r.era_range);
     if (r.pos) meta.splice(1, 0, r.pos);
     c.appendChild(el("div", "meta", meta.join(" · ")));
+    var ks = (r.concepts || "").split(";").map(function (s) { return s.trim(); }).filter(Boolean);
+    if (ks.length) {
+      var d = el("div", "field"); d.appendChild(el("b", "", "Concepts"));
+      var ul = el("ul", "concepts");
+      ks.forEach(function (k) { ul.appendChild(el("li", "", k)); });
+      d.appendChild(ul); c.appendChild(d);
+    }
     if (!r.entry_id.trim()) c.appendChild(el("div", "field note", "No evidence row yet"));
     else {
       var e = evidenceFor(r.entry_id);
@@ -264,6 +274,23 @@
     return c;
   }
 
+  // Parts of speech in the order they are shown inside a word's card: noun first.
+  function posRank(p) {
+    var first = fold((p || "").split(";")[0]);
+    var i = ["noun", "verb", "adjective", "adverb"].indexOf(first);
+    return i === -1 ? 4 : i;
+  }
+
+  // One card per word. Each part (register row) of the word is a section inside it.
+  function wordBlock(word, list) {
+    var c = el("article", "opt word");
+    c.appendChild(el("div", "term", word));
+    list.slice().sort(function (a, b) {
+      return (posRank(a.pos) - posRank(b.pos)) || (parseFloat(a.reg_id) - parseFloat(b.reg_id)) || 0;
+    }).forEach(function (r) { c.appendChild(partBlock(r)); });
+    return c;
+  }
+
   function renderReg() {
     var q = norm($rq.value.trim()), tier = $rtier.value, st = $rstatus.value, ty = $rtype.value;
     $rres.textContent = "";
@@ -274,29 +301,22 @@
       if (ty !== "__all" && r.type !== ty) return false;
       return !q || [r.concepts, r.entry, r.notes].some(function (v) { return norm(v).indexOf(q) !== -1; });
     });
-    var order = [], groups = {};
+    var order = [], groups = {}, names = {};
     hits.forEach(function (r) {
-      var ks = (r.concepts || "").split(";").map(function (s) { return s.trim(); }).filter(Boolean);
-      if (!ks.length) ks = ["(no concept given)"];
-      ks.forEach(function (k) {
-        if (!Object.prototype.hasOwnProperty.call(groups, k)) { groups[k] = []; order.push(k); }
-        groups[k].push(r);
-      });
+      var k = norm(r.entry.trim());
+      if (!Object.prototype.hasOwnProperty.call(groups, k)) { groups[k] = []; order.push(k); names[k] = r.entry.trim(); }
+      groups[k].push(r);
     });
-    $rcount.textContent = hits.length + " of " + reg.length + " entries in " + order.length + " concepts";
+    $rcount.textContent = hits.length + " of " + reg.length + " entries in " + order.length + " words";
     if (!hits.length) { $rres.appendChild(el("div", "msg", "No matching register entries. Try a different search or clear the filters.")); return; }
-    // Alphabetical by concept, then by entry within a concept. Concepts that do not start with
-    // A-Z (after removing accents) are listed last under "#".
-    order.sort(function (a, b) { return alphaCompare(a, b); });
+    // Alphabetical by word. Words that do not start with A-Z (after removing accents)
+    // are listed last under "#".
+    order.sort(function (a, b) { return alphaCompare(names[a], names[b]); });
     var letter = null;
     order.forEach(function (k) {
-      var L = letterOf(k);
+      var L = letterOf(names[k]);
       if (L !== letter) { letter = L; $rres.appendChild(el("h3", "letter", L)); }
-      var g = el("section", "group"); g.appendChild(el("h2", "", k));
-      groups[k].slice().sort(function (a, b) {
-        return alphaCompare(a.entry, b.entry) || (parseFloat(a.reg_id) - parseFloat(b.reg_id)) || 0;
-      }).forEach(function (r) { g.appendChild(optionBlock(r)); });
-      $rres.appendChild(g);
+      $rres.appendChild(wordBlock(names[k], groups[k]));
     });
   }
 
