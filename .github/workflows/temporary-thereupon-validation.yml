@@ -1,0 +1,19 @@
+name: Temporary thereupon validation
+on:
+  push:
+    branches: [temporary-check-thereupon-20261028]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out thereupon data branch
+        uses: actions/checkout@v4
+        with:
+          ref: record-thereupon-tier3-20261028
+          fetch-depth: 0
+      - name: Fetch origin main
+        run: git fetch origin main
+      - name: Run unmodified repository validator
+        run: python3 check.py --allow-file entries.csv --allow-file register.csv
