@@ -1,0 +1,19 @@
+name: Temporary wane validation
+on:
+  push:
+    branches: [temporary-wane-validation-20261028]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out wane data branch
+        uses: actions/checkout@v4
+        with:
+          ref: register-wane-tier1-20261028
+          fetch-depth: 0
+      - name: Fetch origin main
+        run: git fetch origin main
+      - name: Validate repository
+        run: python3 check.py --allow-file entries.csv --allow-file register.csv
