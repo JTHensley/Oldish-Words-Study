@@ -1,0 +1,18 @@
+name: Temporary morn validation
+on:
+  pull_request:
+  push:
+    branches: [temporary-check-morn-20261028]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out morn PR
+        uses: actions/checkout@v4
+        with:
+          ref: add-morn-tier1-20261028
+          fetch-depth: 0
+      - name: Fetch main
+        run: git fetch origin main
+      - name: Run repository validator
+        run: python3 check.py --allow-file entries.csv --allow-file register.csv
