@@ -17,3 +17,4 @@ jobs:
         run: git fetch origin main
       - name: Run unmodified repository validator
         run: python3 check.py --allow-file entries.csv --allow-file register.csv
+# Revalidate updated vyk(es) headword; data head 2e72b4082d4a57727a8ead19068c064ac175f2fa
