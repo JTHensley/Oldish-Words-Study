@@ -63,3 +63,4 @@ reg_id,entry,concepts,type,pos,entry_id,tier,status,chapter,era_range,features,n
 62,full fair,very fair; very well,phrase,adverb phrase,62,,,,ME to EMdE,,the sun shone full fair; the sun shone full fair upon a lush and mighty court,2026-10-27
 63,thrum,sound; throb,word,noun,63,1,,Chapter 1,LMdE,,Fires swayed to the thrum of the bard-band’s strange song. OED thrum n.3; earliest OED quotation 1798.,2026-10-27
 64,thrum,sound; throb,word,verb,64,1,,,EMdE to LMdE,,Manuscript: its unfettered beauty thrumming wild in the hollow. OED thrum v.3 begins in 1592; sense 2a attested from 1763.,2026-10-27
+65,morn,morning; dawn; time of day,word,noun,65,1,,Chapter 1; Chapter 7,OE to PDE,,"Both manuscript uses occur in 'high morn' (noun); OED morn n., especially sense 2a. The compound 'high morn' was not independently verified as a historical fixed expression.",2026-10-28
