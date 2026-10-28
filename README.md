@@ -85,9 +85,11 @@ Never mix the two: a BUILD row is never presented as attested, and a HIT row is 
 
 ### How the register is laid out on the page
 
-- Rows are sorted alphabetically by concept, and within a concept alphabetically by entry. Sorting ignores accents and capital letters.
-- A letter label (A to Z) appears between letter groups. Concepts that do not start with a letter A to Z are listed last, under "#".
-- A row with several concepts (separated by semicolons) is listed under each of its concepts.
+- There is one card for each word. Cards are sorted alphabetically by the word (the `entry` column). Sorting ignores accents and capital letters. Rows whose `entry` is the same word are shown together as sections of one card, so a word with a noun row and a verb row has one card with two sections.
+- Inside a card, sections are ordered noun, verb, adjective, adverb, then any other part of speech, and by `reg_id` among equals. Each section shows its type, part of speech, tier, status, chapter and era, then its `concepts` as a list, then the evidence and notes.
+- A letter label (A to Z) appears between letter groups. Words that do not start with a letter A to Z are listed last, under "#".
+- The search box searches `entry`, `concepts` and `notes`. A section appears only if it matches the search and the filters.
+- `concepts` stay one row per dictionary entry. A new meaning that the same dictionary entry already covers is added to that row's `concepts`; a different dictionary entry needs its own row, which appears as another section of the same card.
 - Each entry shows its `features` as links. A link goes to the matching row in the Wōdlund syntax and grammar view. A value that matches no `gram_id` is shown as plain text.
 
 ### Tier rule
