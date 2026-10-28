@@ -1,0 +1,12 @@
+name: Check speech-craft
+on: push
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: register-speech-craft-20261028
+          fetch-depth: 0
+      - run: git fetch origin main
+      - run: python3 check.py --allow-file entries.csv --allow-file register.csv
