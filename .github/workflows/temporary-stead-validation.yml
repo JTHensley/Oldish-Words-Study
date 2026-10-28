@@ -1,0 +1,19 @@
+name: Temporary stead validation
+on:
+  push:
+    branches: [temporary-stead-validation-20261028]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out stead data branch
+        uses: actions/checkout@v4
+        with:
+          ref: register-stead-tier3-20261028
+          fetch-depth: 0
+      - name: Fetch origin main
+        run: git fetch origin main
+      - name: Validate repository
+        run: python3 check.py --allow-file entries.csv --allow-file register.csv
