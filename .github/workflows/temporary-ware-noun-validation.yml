@@ -1,0 +1,18 @@
+name: Temporary ware noun validation
+on:
+  pull_request:
+  push:
+    branches: [temporary-check-ware-noun-20261028]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out ware noun branch
+        uses: actions/checkout@v4
+        with:
+          ref: add-ware-noun3-tier1-20261028
+          fetch-depth: 0
+      - name: Fetch main
+        run: git fetch origin main
+      - name: Run repository validator
+        run: python3 check.py --allow-file entries.csv --allow-file register.csv
