@@ -1,4 +1,4 @@
-name: Temporary thrum validation
+name: Temporary morn validation
 on:
   pull_request:
   push:
@@ -10,7 +10,7 @@ jobs:
       - name: Check out thrum PR
         uses: actions/checkout@v4
         with:
-          ref: add-thrum-noun-verb-tier1-20261027
+          ref: add-morn-tier1-20261028
           fetch-depth: 0
       - name: Fetch main
         run: git fetch origin main
