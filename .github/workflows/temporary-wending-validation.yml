@@ -1,0 +1,19 @@
+name: Temporary wending validation
+on:
+  push:
+    branches: [temporary-check-wending-20261028]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out wending data branch
+        uses: actions/checkout@v4
+        with:
+          ref: add-wending-noun-tier4-20261028
+          fetch-depth: 0
+      - name: Fetch current main
+        run: git fetch origin main
+      - name: Run unmodified repository validator
+        run: python3 check.py --allow-file entries.csv --allow-file register.csv
