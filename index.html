@@ -159,6 +159,9 @@
     return d;
   }
 
+  // Display only: the data keeps "User"; the page shows the author's initials instead.
+  function displayName(n) { return n.trim() === "User" ? "JTH" : n; }
+
   function card(r) {
     var c = el("article", "card " + (r.status === "BUILD" ? "build" : "hit"));
     c.appendChild(el("div", "term", r.term));
@@ -172,7 +175,7 @@
      linkField("Source address", r.source_url)].forEach(function (n) { if (n) c.appendChild(n); });
     var foot = el("footer", "foot");
     foot.appendChild(el("div", "", r.last_verified_by
-      ? "Last verified by " + r.last_verified_by + (r.last_verified_date ? ", " + r.last_verified_date : "")
+      ? "Last verified by " + displayName(r.last_verified_by) + (r.last_verified_date ? ", " + r.last_verified_date : "")
       : "Not yet verified"));
     if (r.change_note) foot.appendChild(el("div", "", "Change note: " + r.change_note));
     c.appendChild(foot);
