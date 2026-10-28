@@ -1,0 +1,18 @@
+name: Temporary amid amidst validation
+on:
+  pull_request:
+  push:
+    branches: [temporary-check-amid-amidst-20261028]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out amid and amidst branch
+        uses: actions/checkout@v4
+        with:
+          ref: add-amid-amidst-separate-20261028
+          fetch-depth: 0
+      - name: Fetch main
+        run: git fetch origin main
+      - name: Run repository validator
+        run: python3 check.py --allow-file entries.csv --allow-file register.csv
