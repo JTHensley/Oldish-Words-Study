@@ -1,8 +1,8 @@
 reg_id,entry,concepts,type,pos,entry_id,tier,status,chapter,era_range,features,notes,date_added
 1,sore,"very, greatly; painfully, severely",word,adverb,5,3; 4,,,OE to LMdE,,sit/lie/lay sore on; the sorer it sat; the sorer it gnawed; sore beset; sore spent; sore in need of; sore out of his wits; full sore; bruised him sore; missed her full sore,2026-10-24
 2,southward,toward the south,word,adverb,6,1,,,OE,,,2026-10-26
-3,be,perfect tense; state reached,word,auxiliary verb,7,1,,,OE to PDE,,,2026-10-26
-4,have,perfect tense,word,auxiliary verb,8,1,,,OE to LMdE,,,2026-10-26
+3,be,already happened; completed; state reached; has come to be,word,auxiliary verb,7,1,,,OE to PDE,,,2026-10-26
+4,have,already done; completed action; finished,word,auxiliary verb,8,1,,,OE to LMdE,,,2026-10-26
 5,underwood,"undergrowth; brushwood, coppice-wood",word,noun,9,3,,,ME to LMdE,,,2026-10-26
 6,ward,"guard, protect; defend from; keep off harm",word,verb,10,1,,,OE to LMdE,,ward against; ward off; ward X from Y; warding charm; the warding of peace; wards the rune scripts,2026-10-26
 7,wardship,guardianship; state of being a ward,word,noun,11,3,,,ME to LMdE,,,2026-10-26
