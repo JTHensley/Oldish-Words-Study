@@ -1,0 +1,17 @@
+name: Temporary wit validation
+on:
+  push:
+    branches:
+      - temporary-wit-validation-20261028
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: register-wit-noun-verb-tier1-20261028
+          fetch-depth: 0
+      - name: Validate CSV
+        run: |
+          git fetch origin main
+          python3 check.py --allow-file entries.csv --allow-file register.csv
