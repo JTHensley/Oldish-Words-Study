@@ -1,0 +1,20 @@
+name: Temporary Chapter Six stock-phrase validation
+on:
+  push:
+    branches:
+      - validate-stock-phrase-notes-20261029
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out proposed stock-phrase notes branch
+        uses: actions/checkout@v4
+        with:
+          ref: chapter6-stock-phrase-word-notes-20261029
+          fetch-depth: 0
+      - name: Fetch origin main
+        run: git fetch origin main
+      - name: Run repository validation
+        run: python3 check.py --allow-file register.csv
