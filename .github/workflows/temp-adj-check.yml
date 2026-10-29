@@ -1,0 +1,17 @@
+name: Validate chapter 6 adjective
+on:
+  push:
+    branches:
+      - check-ch6-adj-20261029
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chapter6-adjective-20261029
+          fetch-depth: 0
+      - name: Check records
+        run: |
+          git fetch origin main
+          python3 check.py --allow-file entries.csv --allow-file register.csv
