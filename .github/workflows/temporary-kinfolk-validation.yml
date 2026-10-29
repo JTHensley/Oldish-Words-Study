@@ -1,0 +1,20 @@
+name: Temporary kinfolk Tier 1 validation
+on:
+  push:
+    branches:
+      - validate-kinfolk-tier1-20261029
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out proposed kinfolk data branch
+        uses: actions/checkout@v4
+        with:
+          ref: register-kinfolk-tier1-20261029
+          fetch-depth: 0
+      - name: Fetch origin main
+        run: git fetch origin main
+      - name: Run original check.py against main
+        run: python3 check.py --allow-file entries.csv --allow-file register.csv
