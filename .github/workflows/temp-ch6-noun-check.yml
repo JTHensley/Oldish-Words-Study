@@ -1,0 +1,17 @@
+name: Temporary Chapter 6 noun validation
+on:
+  push:
+    branches:
+      - validation-ch6-noun-20261029
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chapter6-noun-20261028
+          fetch-depth: 0
+      - name: Verify
+        run: |
+          git fetch origin main
+          python3 check.py --allow-file entries.csv --allow-file register.csv
