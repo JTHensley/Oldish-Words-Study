@@ -1,0 +1,17 @@
+name: Validate quaver
+on:
+  push:
+    branches:
+      - check-quaver-20261029
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chapter6-quaver-20261029
+          fetch-depth: 0
+      - name: Check
+        run: |
+          git fetch origin main
+          python3 check.py --allow-file entries.csv --allow-file register.csv
