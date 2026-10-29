@@ -1,0 +1,17 @@
+name: Temporary fatness validation
+on:
+  push:
+    branches:
+      - temporary-fatness-validation-20261028
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: register-fatness-tier1-20261028
+          fetch-depth: 0
+      - name: Validate submitted CSV changes
+        run: |
+          git fetch origin main
+          python3 check.py --allow-file entries.csv --allow-file register.csv
