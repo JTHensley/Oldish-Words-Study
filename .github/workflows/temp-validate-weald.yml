@@ -1,0 +1,17 @@
+name: Validate weald data
+on:
+  push:
+    branches:
+      - validate-weald-20261029
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: entry183-20261029
+          fetch-depth: 0
+      - name: Check changes
+        run: |
+          git fetch origin main
+          python3 check.py --allow-file entries.csv --allow-file register.csv
