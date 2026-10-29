@@ -10,3 +10,5 @@ jobs:
           fetch-depth: 0
       - run: git fetch origin main
       - run: python3 check.py --allow-file entries.csv --allow-file register.csv
+
+# rerun after grammar feature correction
