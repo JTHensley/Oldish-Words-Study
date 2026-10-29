@@ -1,0 +1,17 @@
+name: Check weald
+on:
+  push:
+    branches:
+      - check-weald-final
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: weald-final-evidence
+          fetch-depth: 0
+      - name: Validate
+        run: |
+          git fetch origin main
+          python3 check.py --allow-file entries.csv --allow-file register.csv
