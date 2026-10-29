@@ -1,0 +1,21 @@
+name: Temporary score Tier 3 validation
+on:
+  push:
+    branches:
+      - validate-score-tier3-20261029
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out score data branch
+        uses: actions/checkout@v4
+        with:
+          ref: register-score-tier3-20261029
+          fetch-depth: 0
+      - name: Fetch origin main
+        run: git fetch origin main
+      - name: Run original check.py against main
+        run: python3 check.py --allow-file entries.csv --allow-file register.csv
