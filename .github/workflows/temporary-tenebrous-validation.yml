@@ -1,0 +1,17 @@
+name: Temporary tenebrous validation
+on:
+  push:
+    branches:
+      - temporary-tenebrous-validation-20261028
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: register-tenebrous-tier4-20261028
+          fetch-depth: 0
+      - name: Validate changes
+        run: |
+          git fetch origin main
+          python3 check.py --allow-file entries.csv --allow-file register.csv
