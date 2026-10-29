@@ -1,0 +1,17 @@
+name: Validate tiding data
+on:
+  push:
+    branches:
+      - check-ch6-entry-20261029
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chapter6-tidings-tier1-20261029
+          fetch-depth: 0
+      - name: Check rows
+        run: |
+          git fetch origin main
+          python3 check.py --allow-file entries.csv --allow-file register.csv
