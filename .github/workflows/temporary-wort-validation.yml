@@ -1,0 +1,16 @@
+name: Temporary wort CSV validation
+on:
+  push:
+    branches: [wort-validation-20261030]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: wort-oed-20261030
+          fetch-depth: 0
+      - name: Check CSV additions
+        run: |
+          git fetch origin main
+          python3 check.py --allow-file entries.csv --allow-file register.csv
