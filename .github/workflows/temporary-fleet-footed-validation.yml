@@ -1,0 +1,16 @@
+name: Temporary fleet-footed CSV validation
+on:
+  push:
+    branches: [fleet-footed-validation-20261030]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fleet-footed-oed-20261030
+          fetch-depth: 0
+      - name: Validate entries and register against main
+        run: |
+          git fetch origin main
+          python3 check.py --allow-file entries.csv --allow-file register.csv
