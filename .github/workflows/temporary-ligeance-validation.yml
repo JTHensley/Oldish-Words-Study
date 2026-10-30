@@ -1,0 +1,16 @@
+name: Temporary ligeance CSV validation
+on:
+  push:
+    branches: [ligeance-validation-20261030]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ligeance-oed-20261030-ch10
+          fetch-depth: 0
+      - name: Validate repository CSV changes against main
+        run: |
+          git fetch origin main
+          python3 check.py --allow-file entries.csv --allow-file register.csv
