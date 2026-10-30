@@ -1,0 +1,16 @@
+name: Temporary betoken CSV validation
+on:
+  push:
+    branches: [betoken-validation-20261030]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: betoken-oed-20261030
+          fetch-depth: 0
+      - name: Validate CSV changes
+        run: |
+          git fetch origin main
+          python3 check.py --allow-file entries.csv --allow-file register.csv
