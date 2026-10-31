@@ -1,0 +1,16 @@
+name: Temporary while noun CSV validation
+on:
+  push:
+    branches: [while-noun-validation-20261031]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: while-noun-oed-20261031
+          fetch-depth: 0
+      - name: Check CSV
+        run: |
+          git fetch origin main
+          python3 check.py --allow-file entries.csv --allow-file register.csv
