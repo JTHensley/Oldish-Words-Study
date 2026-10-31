@@ -1,0 +1,17 @@
+name: Temporary asunder validation
+on:
+  push:
+    branches:
+      - temporary-asunder-validation-20261031
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: register-asunder-tier1-20261031
+          fetch-depth: 0
+      - name: Validate asunder changes
+        run: |
+          git fetch origin main
+          python3 check.py --allow-file entries.csv --allow-file register.csv
