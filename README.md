@@ -6,7 +6,7 @@ A small research database of historically attested English words and phrases (Ol
 - `entries.csv` holds the data, one row per entry.
 - `register.csv` holds the Wōdlund register (see below), one row per word, phrase or construction.
 - `grammar.csv` holds the Wōdlund syntax and grammar rows (see below), one row per pattern.
-- `index.html` is a single self-contained page that loads `entries.csv`, `register.csv` and `grammar.csv` from the same folder and lets you search and filter them. A switch at the top moves between the Evidence view, the Wōdlund register view and the Wōdlund syntax and grammar view. It makes no other network calls. Browsers block `fetch` on `file://` pages, so view it through a web server (for example `python3 -m http.server`) rather than by double-clicking.
+- `index.html` is a single self-contained page that loads `entries.csv`, `register.csv` and `grammar.csv` from the same folder and lets you search and filter them. A switch at the top moves between the Research view, the Wōdlund register view and the Wōdlund syntax and grammar view. It makes no other network calls. Browsers block `fetch` on `file://` pages, so view it through a web server (for example `python3 -m http.server`) rather than by double-clicking.
 
 ## Columns
 
